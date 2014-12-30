@@ -1,4 +1,5 @@
-### This script is to generate the graph of business days for the Purchasing Bureau to convert requisitions into purchase orders, with a target of 4 business days.
+### This script is to generate the graph of business days for the Purchasing Bureau to convert requisitions into purchase orders, 
+## with a target of 4 business days.
 
 ##load relevant packages
 library(dplyr)
