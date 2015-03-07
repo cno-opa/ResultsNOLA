@@ -61,22 +61,22 @@ FinalLaw<-filter(Opencontracts,Approver=="FinalLaw")
 Executed<-filter(Opencontracts,Approver=="Executed")
 
 ## Pivot the approval dates to form one row for each contract
-DepAttorneydate<-reshape(DepAttorney,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
-CAOdate<-reshape(CAO,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
-SentVendordate<-reshape(SentVendor,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
-FinalLawdate<-reshape(FinalLaw,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
-Executedate<-reshape(Executed,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
+DepAttorney<-reshape(DepAttorney,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
+CAO<-reshape(CAO,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
+SentVendor<-reshape(SentVendor,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
+FinalLaw<-reshape(FinalLaw,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
+Executed<-reshape(Executed,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
 
 ## 
-Open<-select(DepAttorneydate,PO,AltID,Req=Req.DepAttorney,PO_Description=Description.y.DepAttorney,Req_Description=Description.x.DepAttorney,Vendor=Vendor.DepAttorney,Dept=Dept.DepAttorney,ReqStatus=ReqStatus.DepAttorney,POStatus=POStatus.DepAttorney,Type=Type.DepAttorney,ContractDate=POdate,ReqAppDate=ReqApp.DepAttorney,DeputyAttorney=ApprovalDate.DepAttorney)
-CAOdate<-select(CAOdate,PO,AltID,CAO=ApprovalDate.CAO)
-SentVendordate<-select(SentVendordate,PO,AltID,SentVendor=ApprovalDate.SentVendor)
-FinalLawdate<-select(FinalLawdate,PO,AltID,FinalLaw=ApprovalDate.FinalLaw)
-Executedate<-select(Executedate,PO,AltID,Executed=ApprovalDate.Executed)
+DepAttorney<-select(DepAttorneydate,PO,AltID,Req=Req.DepAttorney,PO_Description=Description.y.DepAttorney,Req_Description=Description.x.DepAttorney,Vendor=Vendor.DepAttorney,Dept=Dept.DepAttorney,ReqStatus=ReqStatus.DepAttorney,POStatus=POStatus.DepAttorney,Type=Type.DepAttorney,ContractDate=POdate,ReqAppDate=ReqApp.DepAttorney,DeputyAttorney=ApprovalDate.DepAttorney)
+CAO<-select(CAOdate,PO,AltID,CAO=ApprovalDate.CAO)
+SentVendor<-select(SentVendordate,PO,AltID,SentVendor=ApprovalDate.SentVendor)
+FinalLaw<-select(FinalLawdate,PO,AltID,FinalLaw=ApprovalDate.FinalLaw)
+Executed<-select(Executedate,PO,AltID,Executed=ApprovalDate.Executed)
 
 
-Open<-merge(Open,CAOdate,by=c("PO","AltID"))
-              Open<-merge(Open,SentVendordate,by=c("PO","AltID"))
-                    Open<-merge(Open,FinalLawdate,by=c("PO","AltID"))
-                          Open<-merge(Open,Executedate,by=c("PO","AltID"))
+Open<-merge(DepAttorney,CAO,by=c("PO","AltID"))
+  Open<-merge(Open,SentVendor,by=c("PO","AltID"))
+    Open<-merge(Open,FinalLaw,by=c("PO","AltID"))
+      Open<-merge(Open,Executed,by=c("PO","AltID"))
 
