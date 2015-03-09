@@ -23,7 +23,6 @@ contracts<-merge(contractPOapproval1,contractPOstatus1,by=c("PO","AltID"),all=TR
 contracts<-merge(contracts,contractReqstatus1,by=c("Req"),all=TRUE)
 contracts<-merge(contracts,LawMaster,by=c("PO","AltID"),all=TRUE)
 
-
 ## Need to rename PO and Req description columns 
 
 
@@ -39,7 +38,7 @@ Closedcontracts<-subset(contracts,POStatus=="Sent"|POStatus=="Canceled"|POStatus
 ## Recode approver column into appropriate categories
 Opencontracts$Approver<-paste(Opencontracts$Approver,Opencontracts$ApproverType,sep="_")
 
-Opencontracts$Approver[Opencontracts$Approver=="CRHDIETZ_P"|Opencontracts$Approver=="CJPMEYER_P"|Opencontracts$Approver=="CMJMANZELLA_A"|Opencontracts$Approver=="CLCSETTLEMYER_A"]<-"DepAttorney"
+Opencontracts$Approver[Opencontracts$Approver=="CRHDIETZ_P"|Opencontracts$Approver=="CJPMEYER_P"|Opencontracts$Approver=="CMJMANZELLA_A"|Opencontracts$Approver=="CLCSETTLEMYER_A"]<-"CityAttorney"
 Opencontracts$Approver[Opencontracts$Approver=="CJECHRISTOPHER_A"|Opencontracts$Approver=="CAKOPPLIN_P"]<-"CAO"
 Opencontracts$Approver[Opencontracts$Approver=="CTDOATES_A"|Opencontracts$Approver=="CJPMEYER_A"|Opencontracts$Approver=="CSCWELLMAN_P"]<-"SentVendor"
 Opencontracts$Approver[Opencontracts$Approver=="CTDOATES_P"|Opencontracts$Approver=="CSCWELLMAN_A"]<-"FinalLaw"
@@ -48,35 +47,66 @@ Opencontracts$Approver[Opencontracts$Approver=="NA"]<-"Not Assigned; Still at Re
   
 ## Fake it til you make it
 Opencontracts$ApprovalDate<-as.Date(Opencontracts$ApprovalDate,"%m/%d/%Y")
+Opencontracts$AttorneyReview<-as.Date(Opencontracts$AttorneyReview,"%m/%d/%Y")
+Opencontracts$POdate<-as.Date(Opencontracts$POdate,"%m/%d/%Y")
 Opencontracts<-arrange(Opencontracts,desc(ApprovalDate))
 
 
 ## 
 ReadyforLaw<-filter(Opencontracts,ReqStatus=="Ready for Purchasing")
 AttorneyReview<-filter(Opencontracts,POStatus=="In Progress")
-DepAttorney<-filter(Opencontracts,Approver=="DepAttorney")
+CityAttorney<-filter(Opencontracts,Approver=="CityAttorney")
 CAO<-filter(Opencontracts,Approver=="CAO")
 SentVendor<-filter(Opencontracts,Approver=="SentVendor")
 FinalLaw<-filter(Opencontracts,Approver=="FinalLaw")
 Executed<-filter(Opencontracts,Approver=="Executed")
 
 ## Pivot the approval dates to form one row for each contract
-DepAttorney<-reshape(DepAttorney,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
+CityAttorney<-reshape(CityAttorney,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
 CAO<-reshape(CAO,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
 SentVendor<-reshape(SentVendor,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
 FinalLaw<-reshape(FinalLaw,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
 Executed<-reshape(Executed,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
 
 ## 
-DepAttorney<-select(DepAttorneydate,PO,AltID,Req=Req.DepAttorney,PO_Description=Description.y.DepAttorney,Req_Description=Description.x.DepAttorney,Vendor=Vendor.DepAttorney,Dept=Dept.DepAttorney,ReqStatus=ReqStatus.DepAttorney,POStatus=POStatus.DepAttorney,Type=Type.DepAttorney,ContractDate=POdate,ReqAppDate=ReqApp.DepAttorney,DeputyAttorney=ApprovalDate.DepAttorney)
-CAO<-select(CAOdate,PO,AltID,CAO=ApprovalDate.CAO)
-SentVendor<-select(SentVendordate,PO,AltID,SentVendor=ApprovalDate.SentVendor)
-FinalLaw<-select(FinalLawdate,PO,AltID,FinalLaw=ApprovalDate.FinalLaw)
-Executed<-select(Executedate,PO,AltID,Executed=ApprovalDate.Executed)
+CityAttorney<-select(CityAttorney,PO,AltID,Req=Req.CityAttorney,PO_Description=Description.y.CityAttorney,Req_Description=Description.x.CityAttorney,Vendor=Vendor.CityAttorney,Dept=Dept.CityAttorney,ReqStatus=ReqStatus.CityAttorney,POStatus=POStatus.CityAttorney,Type=Type.CityAttorney,Ordinance=Ordinance.CityAttorney,ContractDate=POdate,AttorneyReview=AttorneyReview,CityAttorney=ApprovalDate.CityAttorney)
+CAO<-select(CAO,PO,AltID,CAO=ApprovalDate.CAO)
+SentVendor<-select(SentVendor,PO,AltID,SentVendor=ApprovalDate.SentVendor)
+FinalLaw<-select(FinalLaw,PO,AltID,FinalLaw=ApprovalDate.FinalLaw)
+Executed<-select(Executed,PO,AltID,Executed=ApprovalDate.Executed)
 
 
-Open<-merge(DepAttorney,CAO,by=c("PO","AltID"))
+Open<-merge(CityAttorney,CAO,by=c("PO","AltID"))
   Open<-merge(Open,SentVendor,by=c("PO","AltID"))
+    Open$BackfromVendor<-
     Open<-merge(Open,FinalLaw,by=c("PO","AltID"))
       Open<-merge(Open,Executed,by=c("PO","AltID"))
 
+## End Date of Analysis Period
+Date<-as.data.frame(Sys.Date())
+colnames(Date)<-c("Date")
+
+## Calculate Age of Open Contracts at Each Stage
+AttorneyReview<-Date$Date - Open$AttorneyReview
+Open$Attorney_Age<-ifelse(is.na(AttorneyReview),Date$Date-Open$ContractDate,NA)
+
+CityAttorney<-Date$Date - Open$CityAttorney
+Open$Attorney_Age<-ifelse(is.na(CityAttorney),Date$Date-Open$AttorneyReview,NA)
+
+CAO<-Date$Date - Open$CAO
+Open$CAO_Age<-ifelse(is.na(CAO),Date$Date-Open$AttorneyReview,NA)
+
+Ordinance<-Date$Date-Open$SentVendor
+Open$Ordinance_Age<-ifelse(Open$Ordinance=="Yes" & is.na(SentVendor),Date$Date-Open$CAO,NA)
+
+SentVendor<-Date$Date - Open$SentVendor
+Open$SentVendor_Age<-ifelse(is.na(SentVendor),Date$Date-Open$CAO,NA)
+
+## Pending; need to add Executed also
+BackFromVendor<-Date$Date-Open$BackfromVendor
+
+FinalLaw<-Date$Date - Open$FinalLaw
+Open$FinalLaw_Age<-ifelse(is.na(FinalLaw) & is.na(Open$Ordinance_Age),Date$Date-Open$SentVendor,NA)
+
+## Write CSV's
+write.csv(Open,"C:/Users/Vic/Documents/ReqtoCheckSTAT/Query Files/Test/Opentest.csv")
