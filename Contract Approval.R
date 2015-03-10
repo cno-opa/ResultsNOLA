@@ -53,7 +53,7 @@ Opencontracts<-arrange(Opencontracts,desc(ApprovalDate))
 
 
 ## 
-ReadyforLaw<-filter(Opencontracts,ReqStatus=="Ready for Purchasing")
+ReadyForLaw<-filter(Opencontracts,ReqStatus=="Ready for Purchasing")
 AttorneyReview<-filter(Opencontracts,POStatus=="In Progress")
 CityAttorney<-filter(Opencontracts,Approver=="CityAttorney")
 CAO<-filter(Opencontracts,Approver=="CAO")
@@ -70,20 +70,23 @@ Executed<-reshape(Executed,timevar="Approver",idvar=c("AltID","PO","POdate","Att
 
 ## PENDING!!!!  Need to append Ready for Law and Attorney Review into open list
 
+ReadyForLaw<-select(ReadyForLaw,PO,AltID,Req=Req,PO_Description=Description.y,Req_Description=Description.x,Vendor=Vendor,Dept=Dept,ReqStatus=ReqStatus,POStatus=POStatus,Type=Type,Ordinance=Ordinance,ContractDate=POdate,AttorneyReview=AttorneyReview)
+AttorneyReview<-select(AttorneyReview,PO,AltID,Req,PO_Description=Description.y,Req_Description=Description.x,Vendor,Dept,ReqStatus,POStatus,Type,Ordinance,ContractDate=POdate,AttorneyReview)
 CityAttorney<-select(CityAttorney,PO,AltID,Req=Req.CityAttorney,PO_Description=Description.y.CityAttorney,Req_Description=Description.x.CityAttorney,Vendor=Vendor.CityAttorney,Dept=Dept.CityAttorney,ReqStatus=ReqStatus.CityAttorney,POStatus=POStatus.CityAttorney,Type=Type.CityAttorney,Ordinance=Ordinance.CityAttorney,ContractDate=POdate,AttorneyReview=AttorneyReview,CityAttorney=ApprovalDate.CityAttorney,BackFromVendor=BackFromVendor.CityAttorney)
-AttorneyReview
-CityAttorney
 CAO<-select(CAO,PO,AltID,CAO=ApprovalDate.CAO)
 SentVendor<-select(SentVendor,PO,AltID,SentVendor=ApprovalDate.SentVendor)
 FinalLaw<-select(FinalLaw,PO,AltID,FinalLaw=ApprovalDate.FinalLaw)
-Executed<-select(Executed,PO,AltID,Executed=ApprovalDate.Executed)
+ExecutiveSignature<-select(Executed,PO,AltID,ExecutiveSignature=ApprovalDate.Executed)
 
+##Merge 
+Open<-merge(CityAttorney,ReadyForLaw,by=c("PO","AltID","Req","PO_Description","Req_Description","Vendor","Dept","ReqStatus","POStatus","Type","Ordinance","ContractDate","AttorneyReview"),all=TRUE)
+Open<-merge(Open,AttorneyReview,by=c("PO","AltID","Req","PO_Description","Req_Description","Vendor","Dept","ReqStatus","POStatus","Type","Ordinance","ContractDate","AttorneyReview"),all=TRUE)
 
-Open<-merge(CityAttorney,CAO,by=c("PO","AltID"))
-  Open<-merge(Open,SentVendor,by=c("PO","AltID"))
-   Open<-merge(Open,FinalLaw,by=c("PO","AltID"))
-      Open<-merge(Open,Executed,by=c("PO","AltID"))
-        Open<-merge(Open,AttorneyReview,by=c("PO","AltID"),all=TRUE)
+Open<-merge(Open,CAO,by=c("PO","AltID"),all=TRUE)
+  Open<-merge(Open,SentVendor,by=c("PO","AltID"),all=TRUE)
+    Open<-merge(Open,FinalLaw,by=c("PO","AltID"),all=TRUE)
+      Open<-merge(Open,ExecutiveSignature,by=c("PO","AltID"),all=TRUE)
+        
 
 ## End Date of Analysis Period
 Date<-as.data.frame(Sys.Date())
