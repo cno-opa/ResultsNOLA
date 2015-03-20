@@ -24,13 +24,12 @@ LawExec<-select(LawExec,PO=PO.Number,AltID=AltID,BackFromVendor=Date.Received.by
 LawMaster<-select(LawMaster,PO=PO.Number,AltID=AltID,Govt=Govt,Type=Type.of.K,TimeOnly=TimeOnly,LawStatus=Status,Ordinance=Ordinance)
 Adjust<-select(Adjustments,PO,AltID,AdjustedSignDate=SignDate)
 
-## Merge files into consolidated contract list; Consolidate Adjusted Signing Date columns
+## Consolidate Adjusted Signing Date columns
 Adjusted<-merge(LawExec,Adjust,by=c("PO","AltID"),all=TRUE)
 Adjusted$AdjustedSignDate<-ifelse(is.na(Adjusted$AdjustedSignDate.x),Adjusted$AdjustedSignDate.y,Adjusted$AdjustedSignDate.x)
 class(Adjusted$AdjustedSignDate)<-"Date"
 
-
-
+## Merge files into consolidated contract list; 
 contracts<-merge(contractPOapproval1,contractPOstatus1,by=c("PO","AltID"),all=TRUE)
 contracts<-merge(contracts,contractReqstatus1,by=c("Req"),all=TRUE)
 contracts<-merge(contracts,LawMaster,by=c("PO","AltID"),all=TRUE)
