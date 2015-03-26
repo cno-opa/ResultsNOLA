@@ -4,14 +4,14 @@ require(dplyr)
 require(lubridate)
 
 ## Read in needed files
-contractPOapproval<-read.csv("Contract Approval Sequence POs.csv",skip=3) ## Report pulled from ECMS
-contractPOstatus<-read.csv("Contract PO Status.csv",skip=3) ## Report pulled from ECMS
-contractReqstatus<-read.csv("Contract Req Status.csv",skip=3) ## Report pulled from ECMS
-contractReqapproval<-read.csv("Contract Approval Sequence Reqs.csv",skip=3)  ##Report pulled from ECMS
-Ordinances<-read.csv("Ordinances.csv",skip=2) ## List compiled by OPA
-Adjustments<-read.csv("Contract Adjustments.csv",na.strings="") ## List compiled by OPA
-LawExec<-read.csv("Law and Executive Counsel Log.csv",na.strings="") ## List compiled by Law and Executive Counsel
-LawMaster<-read.csv("Law Master.csv") ##List compiled by Law
+contractPOapproval<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Approval Sequence POs.csv",skip=3) ## Report pulled from ECMS
+contractPOstatus<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract PO Status.csv",skip=3) ## Report pulled from ECMS
+contractReqstatus<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Req Status.csv",skip=3) ## Report pulled from ECMS
+contractReqapproval<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Approval Sequence Reqs.csv",skip=3)  ##Report pulled from ECMS
+Ordinances<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Ordinances.csv",skip=2) ## List compiled by OPA
+Adjustments<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Adjustments.csv",na.strings="") ## List compiled by OPA
+LawExec<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law and Executive Counsel Log.csv",na.strings="") ## List compiled by Law and Executive Counsel
+LawMaster<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law Master.csv") ##List compiled by Law
 
 
 ## Extract desired variable columns from each file and merge into master dataset
@@ -139,7 +139,15 @@ Open$ExecutiveSignature_Age<-ifelse(is.na(Open$FinalLaw) & is.na(BackFromVendoro
 ## Sort the open list with the oldest contracts at the top
 Open<-arrange(Open,ContractDate)
 
+## Filter to get list of contracts awaiting Ordinance or to be sent to vendor
+Ord_SendVendor<-filter(Open,!is.na(CAO) & is.na(SentVendor) & is.na(BackFromVendor))
+
+## Filter to get list of contracts awaiting vendor signature
+AwaitingVendor<-filter(Open,!is.na(SentVendor) & is.na(BackFromVendor) & is.na(FinalLaw))
+
+
 ## Write CSV's
 write.csv(Open,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Open Contracts.csv")
 write.csv(Closedcontracts,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Closed Contracts.csv")
-
+write.csv(Ord_SendVendor,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Ordinance-SendtoVendor.csv")
+write.csv(AwaitingVendor,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/AwaitingVendor.csv")
