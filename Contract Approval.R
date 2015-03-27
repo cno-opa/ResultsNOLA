@@ -2,6 +2,7 @@ require(tidyr)
 require (plyr)  
 require(dplyr)
 require(lubridate)
+require(xlsx)
 
 ## Read in needed files
 contractPOapproval<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Approval Sequence POs.csv",skip=3) ## Report pulled from ECMS
@@ -149,5 +150,7 @@ AwaitingVendor<-filter(Open,!is.na(SentVendor) & is.na(BackFromVendor) & is.na(F
 ## Write CSV's
 write.csv(Open,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Open Contracts.csv")
 write.csv(Closedcontracts,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Closed Contracts.csv")
-write.csv(Ord_SendVendor,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Ordinance-SendtoVendor.csv")
-write.csv(AwaitingVendor,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/AwaitingVendor.csv")
+
+## Create "snapshot" generally requested by the Law Department several times per month
+write.xlsx(Ord_SendVendor,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Snapshot.xlsx",sheetName="Ordinance-ReadytoSend",showNA=FALSE) ##Write excel file of first of contracts that are either awaiting Ordinance or ready to send to the vendor.
+write.xlsx(AwaitingVendor,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Snapshot.xlsx",sheetName="AwaitingVendor",append=TRUE,showNA=FALSE) ##Add new tab to the snapshot of the contracts currently awaiting vendor signature.

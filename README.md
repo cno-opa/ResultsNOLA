@@ -10,3 +10,8 @@ This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT 
 * Department of Public Works
 * Bureau of Purchasing
 * Office of Supplier Diversity
+
+
+To-Dos for Contract Approval Script:
+* Optimize file cleaning and merging to alleviate front-end data cleaning prior to the script.
+* Work on Contract Req stage
