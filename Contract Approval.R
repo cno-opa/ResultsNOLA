@@ -3,6 +3,7 @@ require (plyr)
 require(dplyr)
 require(lubridate)
 require(xlsx)
+require(gdata)
 
 ## Read in needed files
 contractPOapproval<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Approval Sequence POs.csv",skip=3) ## Report pulled from ECMS
@@ -10,10 +11,17 @@ contractPOstatus<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract PO S
 contractReqstatus<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Req Status.csv",skip=3) ## Report pulled from ECMS
 contractReqapproval<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Approval Sequence Reqs.csv",skip=3)  ##Report pulled from ECMS
 Ordinances<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Ordinances.csv",skip=2) ## List compiled by OPA
-Adjustments<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Adjustments.csv",na.strings="") ## List compiled by OPA
+Adjustments<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Adjustments.csv",na.strings="") ## List compiled by OPA
 LawExec<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law and Executive Counsel Log.csv",na.strings="") ## List compiled by Law and Executive Counsel
-LawMaster<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law Master.csv") ##List compiled by Law
+LawMaster<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law Master.csv",strip.white=TRUE) ##List compiled by Law
 
+##Clean Alternate ID number column to match ECMS formatting conventions of "k##-###"/"mk##-###"
+LawExec$K.Number<-tolower(LawExec$K.Number)
+LawExec$K.Number<-ifelse(grepl("^\\d",LawExec$K.Number),paste("k",LawExec$K.Number,sep=""),paste(LawExec$K.Number))
+LawExec$K.Number<-ifelse(startsWith(LawExec$K.Number,"m"),paste(substring(LawExec$K.Number,1,1),"k",substring(LawExec$K.Number,2,8),sep=""),LawExec$K.Number)
+LawMaster$K.Number<-tolower(LawMaster$K.Number)
+LawMaster$K.Number<-ifelse(grepl("^\\d",LawMaster$K.Number),paste("k",LawMaster$K.Number,sep=""),paste(LawMaster$K.Number))
+LawMaster$K.Number<-ifelse(startsWith(LawMaster$K.Number,"m"),paste(substring(LawMaster$K.Number,1,1),"k",substring(LawMaster$K.Number,2,8),sep=""),LawMaster$K.Numb
 
 ## Extract desired variable columns from each file and merge into master dataset
 contractPOapproval1<-select(contractPOapproval,AltID=ALTERNATE_ID,PO=PO_NBR,AttorneyReview=PO_REQ_APP_DATE,ApprovalDate=APPROVAL_DATE,ApproverType=PO_APPROVER_TYPE,Approver=PO_APPROVER)
@@ -23,7 +31,7 @@ contractReqapproval1<-select(contractReqapproval,Req=REQ_NBR,ReqApprove=APPROVAL
 LawExec$Date.Signed.by.MAY<-as.Date(LawExec$Date.Signed.by.MAY,"%m/%d/%Y")
 Adjustments$SignDate<-as.Date(Adjustments$SignDate,"%m/%d/%Y")
 LawExec<-select(LawExec,PO=PO.Number,AltID=AltID,BackFromVendor=Date.Received.by.Law,AdjustedSignDate=Date.Signed.by.MAY)
-LawMaster<-select(LawMaster,PO=PO.Number,AltID=AltID,Govt=Govt,Type=Type.of.K,TimeOnly=TimeOnly,LawStatus=Status,Ordinance=Ordinance)
+LawMaster<-select(LawMaster,PO=PO.Number,AltID=K.Number,Govt=Govt,Type=Type.of.K,TimeOnly=TimeOnly,LawStatus=Status,Ordinance=Ordinance)
 
 ## 
 LawMaster$Ordinance<-ifelse(LawMaster$Ordinance=="#N/A",0,1)
