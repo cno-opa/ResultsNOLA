@@ -4,51 +4,64 @@ require(dplyr)
 require(lubridate)
 require(xlsx)
 require(gdata)
+require(stringr)
 
 ## Read in needed files
 contractPOapproval<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Approval Sequence POs.csv",skip=3) ## Report pulled from ECMS
 contractPOstatus<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract PO Status.csv",skip=3) ## Report pulled from ECMS
 contractReqstatus<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Req Status.csv",skip=3) ## Report pulled from ECMS
 contractReqapproval<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Approval Sequence Reqs.csv",skip=3)  ##Report pulled from ECMS
-Ordinances<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Ordinances.csv",skip=2) ## List compiled by OPA
 Adjustments<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Adjustments.csv",na.strings="") ## List compiled by OPA
-LawExec<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law and Executive Counsel Log.csv",na.strings="") ## List compiled by Law and Executive Counsel
-LawMaster<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law Master.csv",strip.white=TRUE) ##List compiled by Law
+LawExec<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/LawExec.csv",na.strings="") ## List compiled by Law and Executive Counsel
+LawMaster<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law Master_hist.csv",strip.white=TRUE,na.strings="") ##Lists compiled by Law
+Law2<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law Master.csv",strip.white=TRUE,na.strings=""),PO.Number,K.Number,Govt=Govtal.Entity,Type.of.K,TimeOnly=Time..Only)
+LawMaster<-merge(LawMaster,Law2,by=c("PO.Number","K.Number","Govt","Type.of.K","TimeOnly"),all=TRUE)
+LawMaster<-LawMaster[!is.na(LawMaster$K.Number),]
+
+## Filter out unnecessary rows from Law-Exec log, and re-code invalid dates to 2015.
+LawExec<-LawExec[!is.na(LawExec$Description),]
+LawExec$Date.Signed.by.MAY<-as.Date(LawExec$Date.Signed.by.MAY,"%m/%d/%Y")
+LawExec$Date.Signed.by.MAY<-ifelse(grepl('6$',LawExec$Date.Signed.by.MAY),LawExec$Date.Signed.by.MAY-365,LawExec$Date.Signed.by.MAY)
+class(LawExec$Date.Signed.by.MAY)<-"Date"
+LawExec$Date.Received.by.Law<-as.Date(LawExec$Date.Received.by.Law,"%m/%d/%Y")
+LawExec$Date.Received.by.Law<-ifelse(substr(LawExec$Date.Received.by.Law,4,4)=="2",LawExec$Date.Received.by.Law+1096,LawExec$Date.Received.by.Law)
+class(LawExec$Date.Received.by.Law)<-"Date"
 
 ##Clean Alternate ID number column to match ECMS formatting conventions of "k##-###"/"mk##-###"
 LawExec$K.Number<-tolower(LawExec$K.Number)
 LawExec$K.Number<-ifelse(grepl("^\\d",LawExec$K.Number),paste("k",LawExec$K.Number,sep=""),paste(LawExec$K.Number))
 LawExec$K.Number<-ifelse(startsWith(LawExec$K.Number,"m"),paste(substring(LawExec$K.Number,1,1),"k",substring(LawExec$K.Number,2,8),sep=""),LawExec$K.Number)
 LawMaster$K.Number<-tolower(LawMaster$K.Number)
+LawMaster$K.Number<-str_trim(LawMaster$K.Number,side="both")
 LawMaster$K.Number<-ifelse(grepl("^\\d",LawMaster$K.Number),paste("k",LawMaster$K.Number,sep=""),paste(LawMaster$K.Number))
-LawMaster$K.Number<-ifelse(startsWith(LawMaster$K.Number,"m"),paste(substring(LawMaster$K.Number,1,1),"k",substring(LawMaster$K.Number,2,8),sep=""),LawMaster$K.Numb
+LawMaster$K.Number<-ifelse(startsWith(LawMaster$K.Number,"m"),paste(substring(LawMaster$K.Number,1,1),"k",substring(LawMaster$K.Number,2,8),sep=""),LawMaster$K.Number)
 
 ## Extract desired variable columns from each file and merge into master dataset
+LawMaster<-merge(LawMaster,Law2),by=c("PO.Number","K.Number","Govt","Type.of.K","TimeOnly"),all=TRUE) 
 contractPOapproval1<-select(contractPOapproval,AltID=ALTERNATE_ID,PO=PO_NBR,AttorneyReview=PO_REQ_APP_DATE,ApprovalDate=APPROVAL_DATE,ApproverType=PO_APPROVER_TYPE,Approver=PO_APPROVER)
 contractPOstatus1<-select(contractPOstatus,PO=PO_NBR3,Req=REQ_NBR3,AltID=ALTERNATE_ID3,POdate=PO_DATE3,ReqApp=Max_Date3,Description=SHORT_DESC3,Dept=DESC_TEXT3,Vendor=NAME3,Requestor=REQUESTOR_ID3,POStatus=Status3)
 contractReqstatus1<-select(contractReqstatus,Req=REQ_NBR,Description=SHORT_DESC,ReqStatus=STATUS)
 contractReqapproval1<-select(contractReqapproval,Req=REQ_NBR,ReqApprove=APPROVAL_DATE,ReqApprover=REQ_APPROVER)
 LawExec$Date.Signed.by.MAY<-as.Date(LawExec$Date.Signed.by.MAY,"%m/%d/%Y")
 Adjustments$SignDate<-as.Date(Adjustments$SignDate,"%m/%d/%Y")
-LawExec<-select(LawExec,PO=PO.Number,AltID=AltID,BackFromVendor=Date.Received.by.Law,AdjustedSignDate=Date.Signed.by.MAY)
-LawMaster<-select(LawMaster,PO=PO.Number,AltID=K.Number,Govt=Govt,Type=Type.of.K,TimeOnly=TimeOnly,LawStatus=Status,Ordinance=Ordinance)
+LawExec<-select(LawExec,PO=PO.Number,AltID=K.Number,BackFromVendor=Date.Received.by.Law,DownForSignature=Date.Received.by.EX,AdjustedSignDate=Date.Signed.by.MAY)
+LawMaster<-select(LawMaster,PO=PO.Number,AltID=K.Number,Govt=Govt,Type=Type.of.K,TimeOnly=TimeOnly,LawStatus=Status)
 
-## 
-LawMaster$Ordinance<-ifelse(LawMaster$Ordinance=="#N/A",0,1)
-
-
-Adjust<-select(Adjustments,PO,AltID,AdjustedSignDate=SignDate)
-Adjusted<-merge(LawExec,Adjust,by=c("PO","AltID","AdjustedSignDate"),all=TRUE)
+##
+Adjust<-select(Adjustments,PO,AltID,AdjustedSignDate=SignDate,Ordinance,BackFromVendor)
+LawExec$BackFromVendor<-as.Date(LawExec$BackFromVendor,"%m/%d/%Y")
+Adjust$AdjustedSignDate<-as.Date(Adjust$AdjustedSignDate,"%m/%d/%Y")
+Adjust$BackFromVendor<-as.Date(Adjust$BackFromVendor,"%m/%d/%Y")
+Adjusted<-merge(LawExec,Adjust,by=c("PO","AltID","AdjustedSignDate","BackFromVendor"),all=TRUE)
 
 
 ## Merge files into consolidated contract list; 
 contracts<-merge(contractPOapproval1,contractPOstatus1,by=c("PO","AltID"),all=TRUE)
 contracts<-merge(contracts,contractReqstatus1,by=c("Req"),all=TRUE)
 contracts<-merge(contracts,LawMaster,by=c("PO","AltID"),all=TRUE)
-contracts<-merge(contracts,LawExec,by=c("PO","AltID"),all.x=TRUE)
-contracts<-merge(contracts,Adjusted,by=c("PO","AltID","BackFromVendor","AdjustedSignDate"),all=TRUE)
+contracts<-merge(contracts,Adjusted,by=c("PO","AltID"),all=TRUE)
 
-contracts<-select(contracts,PO,AltID,Req,ApproverType,Approver,Req_Description=Description.x,PO_Description=Description.y,Dept,Vendor,Requestor,ReqStatus,POStatus,Govt,Type,TimeOnly,LawStatus,Ordinance,ReqApp,POdate,AttorneyReview,ApprovalDate,BackFromVendor)
+contracts<-select(contracts,PO,AltID,Req,ApproverType,Approver,Req_Description=Description.x,PO_Description=Description.y,Dept,Vendor,Requestor,ReqStatus,POStatus,Govt,Type,TimeOnly,LawStatus,Ordinance,ReqApp,POdate,AttorneyReview,ApprovalDate,BackFromVendor,AdjustedSignDate)
 
 ## Convert remaining date columns to "Date" class
 contracts$ApprovalDate<-as.Date(contracts$ApprovalDate,"%m/%d/%Y")
