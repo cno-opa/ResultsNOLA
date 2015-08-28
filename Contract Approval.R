@@ -1,27 +1,46 @@
-require(tidyr)
-require (plyr)  
-require(dplyr)
-require(lubridate)
-require(xlsx)
-require(gdata)
-require(stringr)
+.libPaths("C:/Rpackages")
+
+library(tidyr)
+library (plyr)  
+library(dplyr)
+library(lubridate)
+library(xlsx)
+library(gdata)
+library(stringr)
+library(r2excel)
+library(reshape2)
+library(zoo)
+library(ggplot2)
 
 ## Read in needed files
-contractPOapproval<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Approval Sequence POs.csv",skip=3) ## Report pulled from ECMS
-contractPOstatus<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract PO Status.csv",skip=3) ## Report pulled from ECMS
-contractReqstatus<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Req Status.csv",skip=3) ## Report pulled from ECMS
-contractReqapproval<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Approval Sequence Reqs.csv",skip=3)  ##Report pulled from ECMS
-Adjustments<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Adjustments.csv",na.strings="") ## List compiled by OPA
-LawExec<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/LawExec.csv",na.strings="") ## List compiled by Law and Executive Counsel
-LawMaster<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law Master_hist.csv",strip.white=TRUE,na.strings="") ##Lists compiled by Law
-Law2<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law Master.csv",strip.white=TRUE,na.strings=""),PO.Number,K.Number,Govt=Govtal.Entity,Type.of.K,TimeOnly=Time..Only)
-LawMaster<-merge(LawMaster,Law2,by=c("PO.Number","K.Number","Govt","Type.of.K","TimeOnly"),all=TRUE)
+contractPOapproval<-read.csv("Contract Approval Sequence POs.csv",skip=3) ## Report pulled from ECMS
+contractPOstatus<-read.csv("Contract PO Status.csv",skip=3) ## Report pulled from ECMS
+contractReqstatus<-read.csv("Contract Req Status.csv",skip=3) ## Report pulled from ECMS
+contractReqapproval<-read.csv("Contract Approval Sequence Reqs.csv",skip=3)  ##Report pulled from ECMS
+LawExec<-read.csv("Law and Executive Counsel Log.csv",na.strings="") ## List compiled by Law and Executive Counsel
+Adjustments<-read.xlsx2("Adjustments.xlsx",sheetIndex=1,colClasses=c("character","character","Date","Date","numeric","numeric","character","Date","character"))
+BackFromVendor<-read.xlsx2("Adjustments.xlsx",sheetIndex=2,colClasses=c("character","character","Date","Date","numeric","numeric","character","Date","character"))
+Ordinance<-read.xlsx2("Adjustments.xlsx",sheetIndex=3,colClasses=c("character","character","Date","Date","numeric","numeric","character","Date","character")) 
+
+#
+BackFromVendor<-select(BackFromVendor,PO:BackFromVendor)
+class(BackFromVendor$BackFromVendor)<-"Date"
+Ordinance<-select(Ordinance,PO,AltID,Ordinance,OrdinanceDate)
+class(Ordinance$OrdinanceDate)<-"Date"
+Adjustments<-select(Adjustments,PO,AltID,AdjustedSignDate,Closed)
+Adjustments<-merge(Adjustments,BackFromVendor,by=c("PO","AltID"),all=TRUE)
+Adjustments<-merge(Adjustments,Ordinance,by=c("PO","AltID"),all=TRUE)
+
+## Read in, and merge Law Master files
+LawMaster<-read.csv("Law Master_hist.csv",strip.white=TRUE,na.strings="") ##Lists compiled by Law
+Law2<-select(read.csv("Law Master.csv",strip.white=TRUE,na.strings=""),PO.Number,K.Number,Govt=Govtal.Entity,Type.of.K)
+LawMaster<-merge(LawMaster,Law2,by=c("PO.Number","K.Number","Govt","Type.of.K"),all=TRUE)
+rm(Law2)
 LawMaster<-LawMaster[!is.na(LawMaster$K.Number),]
 
 ## Filter out unnecessary rows from Law-Exec log, and re-code invalid dates to 2015.
 LawExec<-LawExec[!is.na(LawExec$Description),]
 LawExec$Date.Signed.by.MAY<-as.Date(LawExec$Date.Signed.by.MAY,"%m/%d/%Y")
-LawExec$Date.Signed.by.MAY<-ifelse(grepl('6$',LawExec$Date.Signed.by.MAY),LawExec$Date.Signed.by.MAY-365,LawExec$Date.Signed.by.MAY)
 class(LawExec$Date.Signed.by.MAY)<-"Date"
 LawExec$Date.Received.by.Law<-as.Date(LawExec$Date.Received.by.Law,"%m/%d/%Y")
 LawExec$Date.Received.by.Law<-ifelse(substr(LawExec$Date.Received.by.Law,4,4)=="2",LawExec$Date.Received.by.Law+1096,LawExec$Date.Received.by.Law)
@@ -29,149 +48,218 @@ class(LawExec$Date.Received.by.Law)<-"Date"
 
 ##Clean Alternate ID number column to match ECMS formatting conventions of "k##-###"/"mk##-###"
 LawExec$K.Number<-tolower(LawExec$K.Number)
-LawExec$K.Number<-ifelse(grepl("^\\d",LawExec$K.Number),paste("k",LawExec$K.Number,sep=""),paste(LawExec$K.Number))
+LawExec$K.Number<-ifelse(grepl("^\\d", LawExec$K.Number),paste("k",LawExec$K.Number,sep=""),paste(LawExec$K.Number))
 LawExec$K.Number<-ifelse(startsWith(LawExec$K.Number,"m"),paste(substring(LawExec$K.Number,1,1),"k",substring(LawExec$K.Number,2,8),sep=""),LawExec$K.Number)
 LawMaster$K.Number<-tolower(LawMaster$K.Number)
 LawMaster$K.Number<-str_trim(LawMaster$K.Number,side="both")
 LawMaster$K.Number<-ifelse(grepl("^\\d",LawMaster$K.Number),paste("k",LawMaster$K.Number,sep=""),paste(LawMaster$K.Number))
 LawMaster$K.Number<-ifelse(startsWith(LawMaster$K.Number,"m"),paste(substring(LawMaster$K.Number,1,1),"k",substring(LawMaster$K.Number,2,8),sep=""),LawMaster$K.Number)
 
-## Extract desired variable columns from each file and merge into master dataset
-LawMaster<-merge(LawMaster,Law2),by=c("PO.Number","K.Number","Govt","Type.of.K","TimeOnly"),all=TRUE) 
-contractPOapproval1<-select(contractPOapproval,AltID=ALTERNATE_ID,PO=PO_NBR,AttorneyReview=PO_REQ_APP_DATE,ApprovalDate=APPROVAL_DATE,ApproverType=PO_APPROVER_TYPE,Approver=PO_APPROVER)
-contractPOstatus1<-select(contractPOstatus,PO=PO_NBR3,Req=REQ_NBR3,AltID=ALTERNATE_ID3,POdate=PO_DATE3,ReqApp=Max_Date3,Description=SHORT_DESC3,Dept=DESC_TEXT3,Vendor=NAME3,Requestor=REQUESTOR_ID3,POStatus=Status3)
-contractReqstatus1<-select(contractReqstatus,Req=REQ_NBR,Description=SHORT_DESC,ReqStatus=STATUS)
-contractReqapproval1<-select(contractReqapproval,Req=REQ_NBR,ReqApprove=APPROVAL_DATE,ReqApprover=REQ_APPROVER)
+## Extract desired variable rows and columns from each file
+contractPOapproval<-select(contractPOapproval,AltID=ALTERNATE_ID,PO=PO_NBR,ContractDate=PO_DATE,LegalReview=PO_REQ_APP_DATE,ApprovalDate=APPROVAL_DATE,Approver=PO_APPROVER,Stage=ORDER_SEQUENCE)
+contractPOstatus<-select(contractPOstatus,PO=PO_NBR3,Req=REQ_NBR3,AltID=ALTERNATE_ID3,Description=SHORT_DESC3,Dept=DESC_TEXT3,Vendor=NAME3,Requestor=REQUESTOR_ID3,POStatus=Status3,ReqComplete=Max_Date3)
+contractReqstatus<-select(contractReqstatus,Req=REQ_NBR,Description=SHORT_DESC,ReqStatus=STATUS)
+contractReqapproval<-select(contractReqapproval,Req=REQ_NBR,ReqApprove=APPROVAL_DATE,ReqApprover=REQ_APPROVER)
 LawExec$Date.Signed.by.MAY<-as.Date(LawExec$Date.Signed.by.MAY,"%m/%d/%Y")
-Adjustments$SignDate<-as.Date(Adjustments$SignDate,"%m/%d/%Y")
 LawExec<-select(LawExec,PO=PO.Number,AltID=K.Number,BackFromVendor=Date.Received.by.Law,DownForSignature=Date.Received.by.EX,AdjustedSignDate=Date.Signed.by.MAY)
-LawMaster<-select(LawMaster,PO=PO.Number,AltID=K.Number,Govt=Govt,Type=Type.of.K,TimeOnly=TimeOnly,LawStatus=Status)
+LawMaster<-select(LawMaster,PO=PO.Number,AltID=K.Number,Govt=Govt,Type=Type.of.K,LawStatus=Status)
 
-##
-Adjust<-select(Adjustments,PO,AltID,AdjustedSignDate=SignDate,Ordinance,BackFromVendor)
+## Code relevant columns into "Date" class
 LawExec$BackFromVendor<-as.Date(LawExec$BackFromVendor,"%m/%d/%Y")
-Adjust$AdjustedSignDate<-as.Date(Adjust$AdjustedSignDate,"%m/%d/%Y")
-Adjust$BackFromVendor<-as.Date(Adjust$BackFromVendor,"%m/%d/%Y")
-Adjusted<-merge(LawExec,Adjust,by=c("PO","AltID","AdjustedSignDate","BackFromVendor"),all=TRUE)
-
+Adjustments<-merge(LawExec,Adjustments,by=c("PO","AltID","BackFromVendor","AdjustedSignDate"),all=TRUE)
 
 ## Merge files into consolidated contract list; 
-contracts<-merge(contractPOapproval1,contractPOstatus1,by=c("PO","AltID"),all=TRUE)
-contracts<-merge(contracts,contractReqstatus1,by=c("Req"),all=TRUE)
+contracts<-merge(contractPOapproval,contractPOstatus,by=c("PO","AltID"),all=TRUE)
+contracts<-merge(contracts,contractReqstatus,by=c("Req"),all=TRUE)
 contracts<-merge(contracts,LawMaster,by=c("PO","AltID"),all=TRUE)
-contracts<-merge(contracts,Adjusted,by=c("PO","AltID"),all=TRUE)
+contracts<-merge(contracts,Adjustments,by=c("PO","AltID"),all=TRUE)
 
-contracts<-select(contracts,PO,AltID,Req,ApproverType,Approver,Req_Description=Description.x,PO_Description=Description.y,Dept,Vendor,Requestor,ReqStatus,POStatus,Govt,Type,TimeOnly,LawStatus,Ordinance,ReqApp,POdate,AttorneyReview,ApprovalDate,BackFromVendor,AdjustedSignDate)
+## Re-Code Order Sequence to appropriate appproval stage category
+contracts$Stage<-ifelse(contracts$Stage==1,"Deputy City Attorney",ifelse(contracts$Stage==2,"CAO",ifelse(contracts$Stage==3,"Sent to Vendor",ifelse(contracts$Stage==4,"ECMS_Back From Vendor",ifelse(contracts$Stage==5,"Executive Signature","Error")))))
+contracts<-select(contracts,PO,AltID,Req,Description.x,Description.y,Dept,Vendor,Requestor,ReqStatus,POStatus,Govt,Type,Ordinance,Closed,ReqComplete,ContractDate,LegalReview,ApprovalDate,Stage,OrdinanceDate,BackFromVendor,DownForSignature,AdjustedSignDate)
 
 ## Convert remaining date columns to "Date" class
+contracts$ContractDate<-as.Date(contracts$ContractDate,"%m/%d/%Y")
 contracts$ApprovalDate<-as.Date(contracts$ApprovalDate,"%m/%d/%Y")
-contracts$AttorneyReview<-as.Date(contracts$AttorneyReview,"%m/%d/%Y")
-contracts$POdate<-as.Date(contracts$POdate,"%m/%d/%Y")
-contracts$BackFromVendor<-as.Date(contracts$BackFromVendor,"%m/%d/%Y")
-contracts$ReqApp<-as.Date(contracts$ReqApp,"%m/%d/%Y")
+contracts$LegalReview<-as.Date(contracts$LegalReview,"%m/%d/%Y")
+contracts$ContractDate<-as.Date(contracts$ContractDate,"%m/%d/%Y")
+contracts$DownForSignature<-as.Date(contracts$DownForSignature,"%m/%d/%Y")
 
-## Remove contracts from the Open list that have already been executed, but haven't been approved in ECMS; subset adjustments
-Opencontracts<-subset(contracts,POStatus=="Ready for Approval"|POStatus=="In Progress"|ReqStatus=="Ready for Purchasing")
-Adjust1<-Opencontracts$PO %in% Adjustments$PO
-Opencontracts<-Opencontracts[!Adjust1,]  
-AdjustClosed<-Opencontracts[Adjust1,]
+## Consolidate contract description column
+contracts$Description<-ifelse(!is.na(contracts$Description.x),as.character(contracts$Description.x),as.character(contracts$Description.y))
+contracts<-select(contracts,-Description.x,-Description.y)
+contracts<-contracts[,c(1:5,22,6,9:11,7:8,12:21)]
 
-## Need a section on data cleaning closed contracts
-Closedcontracts<-subset(contracts,POStatus=="Sent"|POStatus=="Canceled"|POStatus=="Ready to Send")
-Closedcontracts<-merge(AdjustClosed,Closedcontracts,by=c("PO","AltID","Req","ApproverType","Approver","Req_Description","PO_Description","Dept","Vendor","Requestor","Govt","Type","TimeOnly","LawStatus","ReqStatus","POStatus","Ordinance","ReqApp","POdate","AttorneyReview","ApprovalDate","BackFromVendor"),all=TRUE)
+SystemError<-filter(contracts,Stage=="Error")
 
-## Recode approver column for open contracts into appropriate categories
-Opencontracts$Approver<-paste(Opencontracts$Approver,Opencontracts$ApproverType,sep="_")
+## ## Sort the contracts list by ApprovalDate to prepare to drop one of the two rows for each stage
+contracts<-arrange(contracts,desc(ApprovalDate))
 
-## Sort approver column;
-Opencontracts$Approver[Opencontracts$Approver=="CRHDIETZ_P"|Opencontracts$Approver=="CJPMEYER_P"|Opencontracts$Approver=="CMJMANZELLA_A"|Opencontracts$Approver=="CLCSETTLEMYER_A"]<-"CityAttorney"
-Opencontracts$Approver[Opencontracts$Approver=="CJECHRISTOPHER_A"|Opencontracts$Approver=="CAKOPPLIN_P"]<-"CAO"
-Opencontracts$Approver[Opencontracts$Approver=="CTDOATES_A"|Opencontracts$Approver=="CJPMEYER_A"|Opencontracts$Approver=="CSCWELLMAN_P"]<-"SentVendor"
-Opencontracts$Approver[Opencontracts$Approver=="CTDOATES_P"|Opencontracts$Approver=="CSCWELLMAN_A"]<-"FinalLaw"
-Opencontracts$Approver[Opencontracts$Approver=="CONTRACTCLERK_A"|Opencontracts$Approver=="CSTSEPCICH_P"|Opencontracts$Approver=="CVCHONORE"|Opencontracts$Approver=="CEFPUGH_P"|Opencontracts$Approver=="CNSFOSTER_P"|Opencontracts$Approver=="CMJAVERILL_A"|Opencontracts$Approver=="CMESTRICKLAND_A"|Opencontracts$Approver=="CMJAVERILL_A"]<-"Executed"
-Opencontracts$Approver[Opencontracts$Approver=="NA"]<-"Not Assigned; Still at Req Stage"
-
-## Sort the contracts lists by ApprovalDate to prepare to drop one of the two rows
-Opencontracts<-arrange(Opencontracts,desc(ApprovalDate))
-Closedcontracts<-arrange(Closedcontracts,desc(ApprovalDate))
-
-##
-
-## 
-ReadyForLaw<-filter(Opencontracts,ReqStatus=="Ready for Purchasing")
-AttorneyReview<-filter(Opencontracts,POStatus=="In Progress")
-CityAttorney<-filter(Opencontracts,Approver=="CityAttorney")
-CAO<-filter(Opencontracts,Approver=="CAO")
-SentVendor<-filter(Opencontracts,Approver=="SentVendor")
-FinalLaw<-filter(Opencontracts,Approver=="FinalLaw")
-Executed<-filter(Opencontracts,Approver=="Executed")
+## Filter the list down by stage
+ReadyForLaw<-filter(contracts,ReqStatus=="Ready for Purchasing")
+LegalReview<-filter(contracts,POStatus=="In Progress")
+DepAttorney<-filter(contracts,Stage=="Deputy City Attorney")%>%
+  select(PO,ApprovalDate) 
+CAO<-filter(contracts,Stage=="CAO")%>%
+  select(PO,ApprovalDate)
+SentVendor<-filter(contracts,Stage=="Sent to Vendor")%>%
+  select(PO,ApprovalDate)
+ECMS_BackFromVendor<-filter(contracts,Stage=="ECMS_Back From Vendor")%>%
+  select(PO,ApprovalDate)
+ExecutiveSignature<-filter(contracts,Stage=="Executive Signature")%>%
+  select(PO,ApprovalDate)
 
 ## Pivot the approval dates to form one row for each contract
-CityAttorney<-reshape(CityAttorney,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
-CAO<-reshape(CAO,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
-SentVendor<-reshape(SentVendor,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
-FinalLaw<-reshape(FinalLaw,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
-Executed<-reshape(Executed,timevar="Approver",idvar=c("AltID","PO","POdate","AttorneyReview"),direction="wide")
+DepAttorney<-ddply(DepAttorney,"PO",summarize,DepAttorney=first(ApprovalDate))
+CAO<-ddply(CAO,"PO",summarize,CAO=first(ApprovalDate))
+SentVendor<-ddply(SentVendor,"PO",summarize,SentVendor=first(ApprovalDate))
+ECMS_BackFromVendor<-ddply(ECMS_BackFromVendor,"PO",summarize,ECMS_BackFromVendor=first(ApprovalDate))
+ExecutiveSignature<-ddply(ExecutiveSignature,"PO",summarize,ExecutiveSignature=first(ApprovalDate))
 
-## Subset columns needed for Open list
-ReadyForLaw<-select(ReadyForLaw,PO,AltID,Req=Req,PO_Description,Req_Description,Vendor=Vendor,Dept=Dept,ReqStatus=ReqStatus,POStatus=POStatus,Type=Type,Ordinance=Ordinance,ContractDate=POdate,AttorneyReview=AttorneyReview)
-AttorneyReview<-select(AttorneyReview,PO,AltID,Req,PO_Description,Req_Description,Vendor,Dept,ReqStatus,POStatus,Type,Ordinance,ContractDate=POdate,AttorneyReview)
-CityAttorney<-select(CityAttorney,PO,AltID,Req=Req.CityAttorney,PO_Description=PO_Description.CityAttorney,Req_Description=Req_Description.CityAttorney,Vendor=Vendor.CityAttorney,Dept=Dept.CityAttorney,ReqStatus=ReqStatus.CityAttorney,POStatus=POStatus.CityAttorney,Type=Type.CityAttorney,Ordinance=Ordinance.CityAttorney,ContractDate=POdate,AttorneyReview=AttorneyReview,CityAttorney=ApprovalDate.CityAttorney,BackFromVendor=BackFromVendor.CityAttorney)
-CAO<-select(CAO,PO,AltID,CAO=ApprovalDate.CAO)
-SentVendor<-select(SentVendor,PO,AltID,SentVendor=ApprovalDate.SentVendor)
-FinalLaw<-select(FinalLaw,PO,AltID,FinalLaw=ApprovalDate.FinalLaw)
-ExecutiveSignature<-select(Executed,PO,AltID,ExecutiveSignature=ApprovalDate.Executed)
+## Merge back into full PO dataset
+contractMaster<-join(DepAttorney,contracts,by="PO","left",match="first")
+  contractMaster<-merge(contractMaster,CAO,by="PO",all=TRUE)
+    contractMaster<-merge(contractMaster,SentVendor,by="PO",all=TRUE)
+      contractMaster<-merge(contractMaster,ECMS_BackFromVendor,by="PO",all=TRUE)
+        contractMaster<-merge(contractMaster,ExecutiveSignature,by="PO",all=TRUE)
+            contractMaster<-select(contractMaster,PO,DepAttorney,AltID:AdjustedSignDate,CAO:ExecutiveSignature)
+contractpipeline<-rbind(ReadyForLaw,LegalReview)
+  contractpipeline$DepAttorney<-"NA"
+  contractpipeline$CAO<-"NA"
+  contractpipeline$SentVendor<-"NA"
+  contractpipeline$ECMS_BackFromVendor<-"NA"
+  contractpipeline$ExecutiveSignature<-"NA"
+      contractpipeline<-select(contractpipeline,PO,DepAttorney,AltID:AdjustedSignDate,CAO:ExecutiveSignature)
+          contractMaster<-join(contractMaster,contractpipeline,by="PO","full",match="first")
 
-## Merge open contract lists
-Open<-merge(CityAttorney,ReadyForLaw,by=c("PO","AltID","Req","PO_Description","Req_Description","Vendor","Dept","ReqStatus","POStatus","Type","Ordinance","ContractDate","AttorneyReview"),all=TRUE)
-  Open<-merge(Open,AttorneyReview,by=c("PO","AltID","Req","PO_Description","Req_Description","Vendor","Dept","ReqStatus","POStatus","Type","Ordinance","ContractDate","AttorneyReview"),all=TRUE)
-    Open<-merge(Open,CAO,by=c("PO","AltID"),all=TRUE)
-      Open<-merge(Open,SentVendor,by=c("PO","AltID"),all=TRUE)
-        Open<-merge(Open,FinalLaw,by=c("PO","AltID"),all=TRUE)
-          Open<-merge(Open,ExecutiveSignature,by=c("PO","AltID"),all=TRUE)
-            Open<-Open[,c(1:14,16,17,15,18,19)]
+## Select and arrange desired columns in dataset
+contractMaster<-select(contractMaster,PO,Req,AltID,Dept:Ordinance,Closed,ReqStatus,POStatus,ReqComplete:LegalReview,Dep_CityAttorney=DepAttorney,CAO,OrdinanceDate,SentVendor,BackFromVendor,ECMS_BackFromVendor,DownForSignature,AdjustedSignDate,ExecutiveSignature) 
+contractMaster$Type<-tolower(contractMaster$Type)
+contractMaster$AltID<-tolower(contractMaster$AltID)
 
-## End Date of Analysis Period
-Date<-as.data.frame(Sys.Date())
-colnames(Date)<-c("Date")
+# 
+contractMaster$Ordinance<-ifelse(is.na(contractMaster$Ordinance),"Unknown",ifelse(contractMaster$Ordinance=="Yes","Yes","No"))
+contractMaster$Type<-gsub("[[:punct:]]","",contractMaster$Type)
 
-## Calculate Age of Open Contracts at Each Stage
-AttorneyReviewopen<-Date$Date - Open$AttorneyReview
-Open$Attorney_Age<-ifelse(is.na(AttorneyReviewopen),Date$Date-Open$ContractDate,NA)
+## Categorize contracts into different types for analyzing differentials in days to execute
+contractMaster$Group<-ifelse(startsWith(contractMaster$AltID,"m"),"Manual",
+                             ifelse(contractMaster$Ordinance=="Yes","Ordinance", 
+                                 ifelse(grepl("time",contractMaster$Type),"Time Only",
+                                      ifelse(contractMaster$Dept=="AVIATION","Aviation",
+                                          ifelse(is.na(contractMaster$Govt),"Other","Intergovernmental")))))   
+                                                                         
+contractMaster$Type2<-ifelse(grepl("cea",contractMaster$Type),"CEA",
+                           ifelse(grepl("psa under 15k",contractMaster$Type),"PSA Under $15k",
+                                ifelse(grepl("psa",contractMaster$Type),"PSA Over $15k",
+                                    ifelse(grepl("grant",contractMaster$Type),"Grant",
+                                        ifelse(grepl("bid",contractMaster$Type),"Bid","Other")))))
+                                                    
 
-CityAttorneyopen<-Date$Date - Open$CityAttorney
-Open$Attorney_Age<-ifelse(is.na(CityAttorneyopen),Date$Date-Open$AttorneyReview,NA)
-
-CAOopen<-Date$Date - Open$CAO
-Open$CAO_Age<-ifelse(is.na(CAOopen),Date$Date-Open$AttorneyReview,NA)
-
-Ordinanceopen<-Date$Date-Open$SentVendor
-Open$Ordinance_Age<-ifelse(Open$Ordinance=="Yes" & is.na(Ordinanceopen),Date$Date-Open$CAO,NA)
-
-SentVendoropen<-Date$Date - Open$SentVendor
-Open$SentVendor_Age<-ifelse(is.na(SentVendoropen),Date$Date-Open$CAO,NA)
-
-## Calculate days awaiting vendor  
-FinalLawopen<-Date$Date - Open$FinalLaw
-BackFromVendoropen<-Date$Date-Open$BackFromVendor
-Open$VendorReturn_Age<-ifelse(is.na(FinalLawopen) & is.na(BackFromVendoropen),Date$Date-Open$SentVendor,NA)
-
-Open$ExecutiveSignature_Age<-ifelse(is.na(Open$FinalLaw) & is.na(BackFromVendoropen),NA,Date$Date-Open$FinalLaw)
-
-## Sort the open list with the oldest contracts at the top
-Open<-arrange(Open,ContractDate)
-
-## Filter to get list of contracts awaiting Ordinance or to be sent to vendor
-Ord_SendVendor<-filter(Open,!is.na(CAO) & is.na(SentVendor) & is.na(BackFromVendor))
-
-## Filter to get list of contracts awaiting vendor signature
-AwaitingVendor<-filter(Open,!is.na(SentVendor) & is.na(BackFromVendor) & is.na(FinalLaw))
+## Subset contract master list into separate list of contracts that have been closed and those currently open
+Closedcontracts<-subset(contractMaster, POStatus=="Canceled"|POStatus=="Ready to Send"|POStatus=="Sent"|Closed==1|AdjustedSignDate>0|ExecutiveSignature>0)
+OpenReconcile<-contractMaster$PO %in% Closedcontracts$PO
+Opencontracts<-contractMaster[!contractMaster$PO %in% Closedcontracts$PO,]
 
 
-## Write CSV's
-write.csv(Open,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Open Contracts.csv")
-write.csv(Closedcontracts,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Closed Contracts.csv")
+## Create function for days between dates in the contracting process, rounded to whole numbers
+ContractDays<-function(df,FirstDt,EndDt){
+  arguments<-as.list(match.call())  
+  EndDt<-eval(arguments$EndDt,df)
+  FirstDt<-eval(arguments$FirstDt,df)
+  round((strptime(EndDt,"%Y-%m-%d")-strptime(FirstDt,"%Y-%m-%d"))/86400,digits=0)
+}
 
-## Create "snapshot" generally requested by the Law Department several times per month
-write.xlsx(Ord_SendVendor,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Snapshot.xlsx",sheetName="Ordinance-ReadytoSend",showNA=FALSE) ##Write excel file of first of contracts that are either awaiting Ordinance or ready to send to the vendor.
-write.xlsx(AwaitingVendor,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Snapshot.xlsx",sheetName="AwaitingVendor",append=TRUE,showNA=FALSE) ##Add new tab to the snapshot of the contracts currently awaiting vendor signature.
+## Create variable for the average days from contract creation to execution (Days to Execute)
+## Create reconciliation variables to make days between stages easier to calculate
+Closedcontracts$CAO_Ord<-ifelse(is.na(Closedcontracts$OrdinanceDate),as.Date(Closedcontracts$CAO,format="%m/%d/%Y"),as.Date(Closedcontracts$OrdinanceDate,format="%m/%d/%Y")); class(Closedcontracts$CAO_Ord)<-"Date"
+Closedcontracts$VendorReconciled<-ifelse(is.na(Closedcontracts$BackFromVendor),as.Date(Closedcontracts$ECMS_BackFromVendor,format="%m/%d/%Y"),as.Date(Closedcontracts$BackFromVendor,format="%m/%d/%Y")); class(Closedcontracts$VendorReconciled)<-"Date"
+Closedcontracts$ReadyforExec<-ifelse(is.na(Closedcontracts$DownForSignature),as.Date(Closedcontracts$VendorReconciled,format="%m/%d/%Y"),as.Date(Closedcontracts$DownForSignature,format="%m/%d/%Y")); class(Closedcontracts$ReadyforExec)<-"Date"
+Closedcontracts$SignDate<-ifelse(is.na(Closedcontracts$AdjustedSignDate),as.Date(Closedcontracts$ExecutiveSignature,format="%m/%d/%Y"),as.Date(Closedcontracts$AdjustedSignDate,format="%m/%d/%Y")); class(Closedcontracts$SignDate)<-"Date"
+
+## Create variable for the average days from contract creation to execution (Days to Execute)
+Closedcontracts$Days_to_Execute<-ContractDays(Closedcontracts,ContractDate,SignDate)
+Closedcontracts$Days_to_Execute<-ifelse(Closedcontracts$Days_to_Execute<0,0,Closedcontracts$Days_to_Execute)
+
+## Calculate days per stage
+Closedcontracts$LegalReview_Days<-ContractDays(Closedcontracts,ContractDate,LegalReview )
+Closedcontracts$AttorneyReview_Days<-ContractDays(Closedcontracts,LegalReview,Dep_CityAttorney)
+Closedcontracts$CAO_Days<-ContractDays(Closedcontracts,Dep_CityAttorney,CAO)
+Closedcontracts$Ordinance_Days<-ifelse(Closedcontracts$Ordinance=="Yes",ContractDays(Closedcontracts,CAO,OrdinanceDate),"NA")
+Closedcontracts$SentVendor_Days<-ContractDays(Closedcontracts,CAO_Ord,SentVendor)
+Closedcontracts$DaysWithVendor<-ContractDays(Closedcontracts,SentVendor,VendorReconciled)
+Closedcontracts$DownForSignature_Days<-ContractDays(Closedcontracts,VendorReconciled,DownForSignature)
+Closedcontracts$ExecutiveSignature_Days<-ContractDays(Closedcontracts,ReadyforExec,SignDate)
+
+## Re-calculate any negative days to zero days
+Closedcontracts$Ordinance_Days<-ifelse(Closedcontracts$Ordinance_Days<0,0,Closedcontracts$Ordinance_Days)
+Closedcontracts$SentVendor_Days<-ifelse(Closedcontracts$SentVendor_Days<0,0,Closedcontracts$SentVendor_Days)
+Closedcontracts$DaysWithVendor<-ifelse(Closedcontracts$DaysWithVendor<0,0,Closedcontracts$DaysWithVendor)
+Closedcontracts$ExecutiveSignature_Days<-ifelse(Closedcontracts$ExecutiveSignature_Days<0,0,Closedcontracts$ExecutiveSignature_Days)
+
+## Create a variable to segment data into quarters.
+Closedcontracts$Qtr<-as.yearqtr(Closedcontracts$SignDate,format="%m/%d/%Y")
+Closedcontracts<-subset(Closedcontracts,Qtr>"2012 Q2")
+
+## Plot days in stage for executed contracts
+Stages<-melt(select(Closedcontracts,PO,Qtr,LegalReview_Days:ExecutiveSignature_Days),id.var=c("PO","Qtr"),variable.name="Stage",value.name="Days_in_Stage")
+Stages$Days_in_Stage<-as.numeric(Stages$Days_in_Stage)
+Stages<- aggregate(Days_in_Stage ~ Qtr + Stage, data = Stages, mean)
+Stage_plot<-ggplot(Stages,aes(x=factor(Qtr),y=Days_in_Stage,group=1))
+Stage_plot<-Stage_plot+geom_line(stat="identity",fill="purple",size=0.6)
+Stage_plot<-Stage_plot+facet_grid(facets=.~Stage)
+Stage_plot<-Stage_plot+ggtitle("Average Days per Stage for Executed Contracts")
+Stage_plot<-Stage_plot+xlab("Quarters")
+Stage_plot<-Stage_plot+ylab("Days")
+Stage_plot<-Stage_plot+theme(strip.text.x=element_text(size=8))
+print(Stage_plot)
+ggsave("./Output/Closed Contracts by Stage.png")
+
+## Plot Days to Execute
+Days2Execute<-ddply(Closedcontracts,"Qtr",summarise,Sign=mean(Days_to_Execute))
+Execution<-ggplot(Days2Execute,aes(x=factor(Qtr),y=Sign))
+Execution<-Execution+geom_bar(stat="identity",fill="steelblue")
+Execution<-Execution+ggtitle("Days to Execute by Quarter")
+Execution<-Execution+xlab("Quarters")
+Execution<-Execution+ylab("Days")
+Execution<-Execution+geom_text(aes(y=Sign,ymax=Sign+1,label=round(Sign,1)),position=position_dodge(width=0.9),vjust=-.5,size=5)
+Execution<-Execution+geom_hline(aes(yintercept=30),colour="#FF0000",linetype=2,size=1.2)
+print(Execution)
+ggsave("./Output/Days to Execute.png")
+
+## Plot days to execute broken down by process
+Execute_Process<-aggregate(Days_to_Execute~Qtr+Group,data=Closedcontracts,mean)
+ExecuteProcess_Plot<-ggplot(Execute_Process,aes(x=factor(Qtr),y=Days_to_Execute,group=Group,color=factor(Group)))
+ExecuteProcess_Plot<-ExecuteProcess_Plot+geom_line(stat="identity",size=1.25)
+ExecuteProcess_Plot<-ExecuteProcess_Plot+text(c(2,2),c(37,35),labels=c("Manual","Ordinance","Time Only","Aviation","CEA","PSA","Grant","Bid"))
+print(ExecuteProcess_Plot)
+
+## Plot days to execute broken down by process
+Execute_Type<-aggregate(Days_to_Execute~Qtr+Type2,data=Closedcontracts,mean)
+ExecuteType_Plot<-ggplot(Execute_Type,aes(x=factor(Qtr),y=Days_to_Execute,group=Type2,color=factor(Type2)))
+ExecuteType_Plot<-ExecuteType_Plot+geom_line(stat="identity",size=1.25)
+print(ExecuteType_Plot)
+
+## Subset for contracts requiring ordinance and Plot 
+OrdinanceSign<-subset(Closedcontracts,Ordinance=="Yes")
+OrdExecute<-ddply(OrdinanceSign,"Qtr",summarise,OrdSign=mean(Days_to_Execute))
+OrdExecution<-ggplot(OrdExecute,aes(x=factor(Qtr),y=OrdSign))
+OrdExecution<-OrdExecution+geom_bar(stat="identity",fill="steelblue")
+OrdExecution<-OrdExecution+ggtitle("Days to Execute by Quarter")
+OrdExecution<-OrdExecution+xlab("Quarters")
+OrdExecution<-OrdExecution+ylab("Days")
+OrdExecution<-OrdExecution+geom_text(aes(y=OrdSign,ymax=OrdSign+10,label=round(OrdSign,1)),position=position_dodge(width=0.9),vjust=-.5)
+print(OrdExecution)
+ggsave("./Output/Ordinance Execute.png")
+
+
+
+## Generate spreadsheets of the underlying output data
+write.xlsx2(contractMaster,"O:/Projects/ReqtoCheckStat/Query Files/Output/Contract Approval Master.xlsx",showNA=FALSE)
+write.csv(Closedcontracts,"O:/Projects/ReqtoCheckStat/Query Files/Output/Closed Contracts.csv")
+write.csv(Opencontracts,"O:/Projects/ReqtoCheckStat/Query Files/Output/Open Contracts.csv")
+write.csv(LawExec,"O:/Projects/ReqtoCheckStat/Query Files/Output/LawExec.csv")
+write.csv(Adjustments,"O:/Projects/ReqtoCheckStat/Query Files/Output/Adjust.csv")
+write.csv(OrdinanceSign,"O:/Projects/ReqtoCheckStat/Query Files/Output/OrdSign.csv")
+write.csv(contracts,"O:/Projects/ReqtoCheckStat/Query Files/Output/Contracts.csv")
+write.csv(contractpipeline,"O:/Projects/ReqtoCheckStat/Query Files/Output/contractpipeline.csv")
+
