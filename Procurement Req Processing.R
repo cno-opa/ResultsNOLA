@@ -41,6 +41,6 @@ Purchasing<-Purchasing+ylab("Business Days")
 Purchasing<-Purchasing+geom_text(aes(y=PO,ymax=PO+1,label=round(PO,1)),position=position_dodge(width=0.9),vjust=-.5,size=5)
 Purchasing<-Purchasing+geom_hline(aes(yintercept=4,colour="red"),linetype=2)
 print(Purchasing)
-ggsave("./Output/Days to Execute.png")
+ggsave("./Output/Days to PO.png")
 
 write.csv(Reqs,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Purchase Orders.csv")

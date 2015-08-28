@@ -153,13 +153,21 @@ contractMaster$Type2<-ifelse(grepl("cea",contractMaster$Type),"CEA",
                                 ifelse(grepl("psa",contractMaster$Type),"PSA Over $15k",
                                     ifelse(grepl("grant",contractMaster$Type),"Grant",
                                         ifelse(grepl("bid",contractMaster$Type),"Bid","Other")))))
-                                                    
+
+## Create reconciliation variables to make days between stages easier to calculate
+contractMaster$CAO_Ord<-ifelse(is.na(contractMaster$OrdinanceDate),as.Date(contractMaster$CAO,format="%m/%d/%Y"),as.Date(contractMaster$OrdinanceDate,format="%m/%d/%Y")); class(contractMaster$CAO_Ord)<-"Date"
+contractMaster$VendorReconciled<-ifelse(is.na(contractMaster$BackFromVendor),as.Date(contractMaster$ECMS_BackFromVendor,format="%m/%d/%Y"),as.Date(contractMaster$BackFromVendor,format="%m/%d/%Y")); class(contractMaster$VendorReconciled)<-"Date"
+contractMaster$ReadyforExec<-ifelse(is.na(contractMaster$DownForSignature),as.Date(contractMaster$VendorReconciled,format="%m/%d/%Y"),as.Date(contractMaster$DownForSignature,format="%m/%d/%Y")); class(contractMaster$ReadyforExec)<-"Date"
+contractMaster$SignDate<-ifelse(is.na(contractMaster$AdjustedSignDate),as.Date(contractMaster$ExecutiveSignature,format="%m/%d/%Y"),as.Date(contractMaster$AdjustedSignDate,format="%m/%d/%Y")); class(contractMaster$SignDate)<-"Date"
+
+## Create variable for the average days from contract creation to execution (Days to Execute)
+contractMaster$Days_to_Execute<-ContractDays(Closedcontracts,ContractDate,SignDate)
+contractMaster$Days_to_Execute<-ifelse(contractMaster$Days_to_Execute<0,0,contractMaster$Days_to_Execute)
 
 ## Subset contract master list into separate list of contracts that have been closed and those currently open
-Closedcontracts<-subset(contractMaster, POStatus=="Canceled"|POStatus=="Ready to Send"|POStatus=="Sent"|Closed==1|AdjustedSignDate>0|ExecutiveSignature>0)
+Closedcontracts<-subset(contractMaster, POStatus=="Canceled"|POStatus=="Ready to Send"|POStatus=="Sent"|Closed==1|Days_to_Execute>=0)
 OpenReconcile<-contractMaster$PO %in% Closedcontracts$PO
 Opencontracts<-contractMaster[!contractMaster$PO %in% Closedcontracts$PO,]
-
 
 ## Create function for days between dates in the contracting process, rounded to whole numbers
 ContractDays<-function(df,FirstDt,EndDt){
@@ -169,35 +177,25 @@ ContractDays<-function(df,FirstDt,EndDt){
   round((strptime(EndDt,"%Y-%m-%d")-strptime(FirstDt,"%Y-%m-%d"))/86400,digits=0)
 }
 
-## Create variable for the average days from contract creation to execution (Days to Execute)
-## Create reconciliation variables to make days between stages easier to calculate
-Closedcontracts$CAO_Ord<-ifelse(is.na(Closedcontracts$OrdinanceDate),as.Date(Closedcontracts$CAO,format="%m/%d/%Y"),as.Date(Closedcontracts$OrdinanceDate,format="%m/%d/%Y")); class(Closedcontracts$CAO_Ord)<-"Date"
-Closedcontracts$VendorReconciled<-ifelse(is.na(Closedcontracts$BackFromVendor),as.Date(Closedcontracts$ECMS_BackFromVendor,format="%m/%d/%Y"),as.Date(Closedcontracts$BackFromVendor,format="%m/%d/%Y")); class(Closedcontracts$VendorReconciled)<-"Date"
-Closedcontracts$ReadyforExec<-ifelse(is.na(Closedcontracts$DownForSignature),as.Date(Closedcontracts$VendorReconciled,format="%m/%d/%Y"),as.Date(Closedcontracts$DownForSignature,format="%m/%d/%Y")); class(Closedcontracts$ReadyforExec)<-"Date"
-Closedcontracts$SignDate<-ifelse(is.na(Closedcontracts$AdjustedSignDate),as.Date(Closedcontracts$ExecutiveSignature,format="%m/%d/%Y"),as.Date(Closedcontracts$AdjustedSignDate,format="%m/%d/%Y")); class(Closedcontracts$SignDate)<-"Date"
-
-## Create variable for the average days from contract creation to execution (Days to Execute)
-Closedcontracts$Days_to_Execute<-ContractDays(Closedcontracts,ContractDate,SignDate)
-Closedcontracts$Days_to_Execute<-ifelse(Closedcontracts$Days_to_Execute<0,0,Closedcontracts$Days_to_Execute)
 
 ## Calculate days per stage
-Closedcontracts$LegalReview_Days<-ContractDays(Closedcontracts,ContractDate,LegalReview )
-Closedcontracts$AttorneyReview_Days<-ContractDays(Closedcontracts,LegalReview,Dep_CityAttorney)
-Closedcontracts$CAO_Days<-ContractDays(Closedcontracts,Dep_CityAttorney,CAO)
-Closedcontracts$Ordinance_Days<-ifelse(Closedcontracts$Ordinance=="Yes",ContractDays(Closedcontracts,CAO,OrdinanceDate),"NA")
-Closedcontracts$SentVendor_Days<-ContractDays(Closedcontracts,CAO_Ord,SentVendor)
-Closedcontracts$DaysWithVendor<-ContractDays(Closedcontracts,SentVendor,VendorReconciled)
-Closedcontracts$DownForSignature_Days<-ContractDays(Closedcontracts,VendorReconciled,DownForSignature)
-Closedcontracts$ExecutiveSignature_Days<-ContractDays(Closedcontracts,ReadyforExec,SignDate)
+contractMaster$LegalReview_Days<-ContractDays(Closedcontracts,ContractDate,LegalReview )
+contractMaster$AttorneyReview_Days<-ContractDays(Closedcontracts,LegalReview,Dep_CityAttorney)
+contractMaster$CAO_Days<-ContractDays(Closedcontracts,Dep_CityAttorney,CAO)
+contractMaster$Ordinance_Days<-ifelse(contractMaster$Ordinance=="Yes",ContractDays(Closedcontracts,CAO,OrdinanceDate),"NA")
+contractMaster$SentVendor_Days<-ContractDays(Closedcontracts,CAO_Ord,SentVendor)
+contractMaster$DaysWithVendor<-ContractDays(Closedcontracts,SentVendor,VendorReconciled)
+contractMaster$DownForSignature_Days<-ContractDays(Closedcontracts,VendorReconciled,DownForSignature)
+contractMaster$ExecutiveSignature_Days<-ContractDays(Closedcontracts,ReadyforExec,SignDate)
 
 ## Re-calculate any negative days to zero days
-Closedcontracts$Ordinance_Days<-ifelse(Closedcontracts$Ordinance_Days<0,0,Closedcontracts$Ordinance_Days)
-Closedcontracts$SentVendor_Days<-ifelse(Closedcontracts$SentVendor_Days<0,0,Closedcontracts$SentVendor_Days)
-Closedcontracts$DaysWithVendor<-ifelse(Closedcontracts$DaysWithVendor<0,0,Closedcontracts$DaysWithVendor)
-Closedcontracts$ExecutiveSignature_Days<-ifelse(Closedcontracts$ExecutiveSignature_Days<0,0,Closedcontracts$ExecutiveSignature_Days)
+contractMaster$Ordinance_Days<-ifelse(contractMaster$Ordinance_Days<0,0,contractMaster$Ordinance_Days)
+contractMaster$SentVendor_Days<-ifelse(contractMaster$SentVendor_Days<0,0,contractMaster$SentVendor_Days)
+contractMaster$DaysWithVendor<-ifelse(contractMaster$DaysWithVendor<0,0,contractMaster$DaysWithVendor)
+contractMaster$ExecutiveSignature_Days<-ifelse(contractMaster$ExecutiveSignature_Days<0,0,contractMaster$ExecutiveSignature_Days)
 
 ## Create a variable to segment data into quarters.
-Closedcontracts$Qtr<-as.yearqtr(Closedcontracts$SignDate,format="%m/%d/%Y")
+contractMaster$Qtr<-as.yearqtr(contractMaster$SignDate,format="%m/%d/%Y")
 Closedcontracts<-subset(Closedcontracts,Qtr>"2012 Q2")
 
 ## Plot days in stage for executed contracts
