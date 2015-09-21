@@ -1,9 +1,17 @@
-require(tidyr)
-require (plyr)  
-require(dplyr)
-require(lubridate)
-require(reshape2)
-require(xlsx)
+.libPaths("C:/Rpackages")
+
+## Download OPA theme, as well as required packages from OPA github account
+source_https <- function(u, unlink.tmp.certs = FALSE) {
+  require(RCurl)
+  
+  if(!file.exists("cacert.pem")) download.file(url="http://curl.haxx.se/ca/cacert.pem", destfile = "cacert.pem")
+  script <- getURL(u, followlocation = TRUE, cainfo = "cacert.pem")
+  if(unlink.tmp.certs) unlink("cacert.pem")
+  
+  eval(parse(text = script), envir= .GlobalEnv)
+}
+source_https("https://raw.githubusercontent.com/cno-opa/graphics/master/plotters.R")
+source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Requirements.R")
 
 ## Read in needed files 
 ReqApproval<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Req Approval Sequence.csv",skip=3)

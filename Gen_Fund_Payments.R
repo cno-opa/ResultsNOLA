@@ -1,12 +1,17 @@
 .libPaths("C:/Rpackages")
 
-## Load required packages
-library(gdata)
-library(stringr)
-library(lubridate)
-library(bizdays)
-library(zoo)
-library(dplyr)
+## Download OPA theme, as well as required packages from OPA github account
+source_https <- function(u, unlink.tmp.certs = FALSE) {
+  require(RCurl)
+  
+  if(!file.exists("cacert.pem")) download.file(url="http://curl.haxx.se/ca/cacert.pem", destfile = "cacert.pem")
+  script <- getURL(u, followlocation = TRUE, cainfo = "cacert.pem")
+  if(unlink.tmp.certs) unlink("cacert.pem")
+  
+  eval(parse(text = script), envir= .GlobalEnv)
+}
+source_https("https://raw.githubusercontent.com/cno-opa/graphics/master/plotters.R")
+source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Requirements.R")
 
 ## Create function for days between invoice date and check date, rounded to whole numbers
 PayDays<-function(df,InvoiceDt,CheckDt){
@@ -17,8 +22,8 @@ PayDays<-function(df,InvoiceDt,CheckDt){
 }
 
 ## Read in needed files
-GP<-read.csv("Great Plains master.csv") 
-Dep_code<-read.csv("Dept Codebook.csv")
+GP<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Great Plains master.csv") 
+Dep_code<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Dept Codebook.csv")
 
 ## Parse Purchase Order numbers to be consistent with BuySpeed
 GP$Vendor<-gsub("\\/.*","",x=GP$Vendor)

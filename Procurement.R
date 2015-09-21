@@ -1,21 +1,26 @@
 ### This script to generate the graph of business days for the Purchasing Bureau to convert requisitions into purchase orders, 
 ## with a target of 4 business days.
 
-##load relevant packages
-library(plyr)
-library(ggplot2)
-library(dplyr)
-library(scales) ## to scale dates into month-year format in graphs
-library(lubridate)
-library(bizdays)
-library(zoo)
-library(reshape2)
+.libPaths("C:/Rpackages")
+
+## Download OPA theme, as well as required packages from OPA github account
+source_https <- function(u, unlink.tmp.certs = FALSE) {
+  require(RCurl)
+  
+  if(!file.exists("cacert.pem")) download.file(url="http://curl.haxx.se/ca/cacert.pem", destfile = "cacert.pem")
+  script <- getURL(u, followlocation = TRUE, cainfo = "cacert.pem")
+  if(unlink.tmp.certs) unlink("cacert.pem")
+  
+  eval(parse(text = script), envir= .GlobalEnv)
+}
+source_https("https://raw.githubusercontent.com/cno-opa/graphics/master/plotters.R")
+source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Requirements.R")
 
 ## read, clean, and format
 headings<-c("Dept","Req","FinanceDate","POnumber","POdate","Cost","Vendor","PrintDate","BuyerInitials","Buyer","WorkingDays")
-Reqs<-read.csv("ProcurementReqProcessing.csv",col.names=headings,stringsAsFactors=FALSE,skip=3)
-ReqStatus<-select(read.csv("Req Status.csv",skip=3),Req=REQ_NBR,Status=STATUS)
-#Category<-select(read.csv("PObyCategory.csv",skip=3),Req=REQ_NBR,Descr=DESC_LONG)
+Reqs<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/ProcurementReqProcessing.csv",col.names=headings,stringsAsFactors=FALSE,skip=3)
+ReqStatus<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Req Status.csv",skip=3),Req=REQ_NBR,Status=STATUS)
+#Category<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/PObyCategory.csv",skip=3),Req=REQ_NBR,Descr=DESC_LONG)
 
 # Standardize req number variables in two data sets
 Reqs<-merge(Reqs,ReqStatus,by="Req",all.x=TRUE)
@@ -56,7 +61,7 @@ Purchasing<-Purchasing+ylab("Business Days")
 Purchasing<-Purchasing+geom_text(aes(y=WorkingDays,ymax=WorkingDays+1,label=round(WorkingDays,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)
 Purchasing<-Purchasing+geom_hline(aes(yintercept=4,colour="#FF0000"),linetype=2,size=1)
 print(Purchasing)
-ggsave("./Slides/Days to PO.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Days to PO.png")
 
 ## Plot the distribution percentages of business days to process by quarter
 POdist<-select(Reqs,Qtr,Under4,Over4)
@@ -77,7 +82,7 @@ Dist_plot<-ggplot(POdist,aes(x = factor(Qtr), y = value,fill = variable)) +
              geom_text(aes(ymax=value,y=position,label=percent(value)),size=4)+
                  scale_fill_manual(values=c(lightBlue,red),name=" ",labels=c("<=4 Business Days",">4 Business Days"))
 print(Dist_plot)
-ggsave("./Slides/PO Distribution.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/PO Distribution.png")
 
 ## Export the data
 write.csv(Reqs,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Purchase Orders.csv")

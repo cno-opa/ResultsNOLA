@@ -1,16 +1,17 @@
 .libPaths("C:/Rpackages")
 
-library(tidyr)
-library(plyr)  
-library(dplyr)
-library(lubridate)
-library(xlsx)
-library(gdata)
-library(stringr)
-library(r2excel)
-library(reshape2)
-library(zoo)
-library(ggplot2)
+## Download OPA theme, as well as required packages from OPA github account
+source_https <- function(u, unlink.tmp.certs = FALSE) {
+  require(RCurl)
+  
+  if(!file.exists("cacert.pem")) download.file(url="http://curl.haxx.se/ca/cacert.pem", destfile = "cacert.pem")
+  script <- getURL(u, followlocation = TRUE, cainfo = "cacert.pem")
+  if(unlink.tmp.certs) unlink("cacert.pem")
+  
+  eval(parse(text = script), envir= .GlobalEnv)
+}
+source_https("https://raw.githubusercontent.com/cno-opa/graphics/master/plotters.R")
+source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Requirements.R")
 
 ## Create function for days between dates in the contracting process among closed contracts, rounded to whole numbers
 ContractDays<-function(df,FirstDt,EndDt){
@@ -331,7 +332,7 @@ openplot<-ggplot(summary_merge,aes(x=factor(Qtr),y=cumulative_net,group=1))
 openplot<-openplot+geom_bar(stat="identity",fill="purple",size=0.6)+ggtitle("Contracts in Queue at the End of Quarter")+ylab("Number of Contracts")+xlab("Quarters")
 openplot<-openplot+geom_text(aes(y=cumulative_net,ymax=cumulative_net+1,label=cumulative_net),vjust=-.25)
 print(openplot) ## Create chart of open contracts at end of each quarter
-ggsave("./Slides/Open Contracts.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Open Contracts.png")
 summary_melt<-select(summary_merge,Qtr,Opened,Closed)
 summary_melt<-subset(summary_melt,Qtr>"2012 Q4")
 summary_melt<-melt(summary_melt,id.vars="Qtr")
@@ -340,7 +341,7 @@ Open_closedplot<-ggplot(summary_melt,aes(x=factor(Qtr),y=value))+
     Open_closedplot<-Open_closedplot+ggtitle("Contracts Opened and Closed by Quarter")+xlab("Quarters")+ylab("Number of Contracts")
       Open_closedplot<-Open_closedplot+geom_text(aes(y=value,ymax=value,label=value),position=position_dodge(width=0.7),size=4)
 print(Open_closedplot)
-ggsave("./Slides/Opened and Closed Contracts.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Opened and Closed Contracts.png")
 
 ## Subset contract master list into separate list of contracts that have been closed and those currently open
 Opencontracts<-subset(contractMaster,is.na(Last_Qtr))
@@ -393,7 +394,7 @@ Stage_plot<-Stage_plot+xlab("Quarters")
 Stage_plot<-Stage_plot+ylab("Days")
 Stage_plot<-Stage_plot+theme(strip.text.x=element_text(size=8))
 print(Stage_plot)
-ggsave("./Slides/Closed Contracts by Stage.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Closed Contracts by Stage.png")
 
 ## Plot Days to Execute
 Days2Execute<-ddply(subset(Closedcontracts,!is.na(Days_to_Execute),Last_Qtr>"2012 Q2"),"Last_Qtr",summarise,Sign=mean(Days_to_Execute))
@@ -405,7 +406,7 @@ Execution<-Execution+ylab("Days")
 Execution<-Execution+geom_text(aes(y=Sign,ymax=Sign+1,label=round(Sign,1)),position=position_dodge(width=0.9),vjust=-.5,size=5)
 Execution<-Execution+geom_hline(aes(yintercept=30),colour="#FF0000",linetype=2,size=1.2)+theme(legend.position="top",legend.text=)
 print(Execution)
-ggsave("./Slides/Days to Execute.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Days to Execute.png")
 
 ## Plot days in stage for executed contracts
 Stage_Ages<-select(Opencontracts,PO:AltID,AttorneyReview_Age:ExecutiveSignature_Age)
@@ -428,7 +429,7 @@ Stage_plot<-Stage_plot+xlab("Quarters")
 Stage_plot<-Stage_plot+ylab("Days")
 Stage_plot<-Stage_plot+theme(strip.text.x=element_text(size=8))
 print(Stage_plot)
-ggsave("./Slides/Closed Contracts by Stage.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Closed Contracts by Stage.png")
 
 ## Plot days to execute broken down by process
 Execute_Process<-aggregate(Days_to_Execute~Last_Qtr+Group,data=Closedcontracts,mean)
@@ -453,7 +454,7 @@ OrdExecution<-OrdExecution+xlab("Quarters")
 OrdExecution<-OrdExecution+ylab("Days")
 OrdExecution<-OrdExecution+geom_text(aes(y=OrdSign,ymax=OrdSign+10,label=round(OrdSign,1)),position=position_dodge(width=0.9),vjust=-.5)
 print(OrdExecution)
-ggsave("./Slides/Ordinance Execute.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Ordinance Execute.png")
 
 
 ## Generate spreadsheets of the underlying output data
