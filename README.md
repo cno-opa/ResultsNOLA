@@ -12,6 +12,10 @@ This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT 
 * Office of Supplier Diversity
 
 
-To-Dos for Contract Approval Script:
-* Optimize file cleaning and merging to alleviate front-end data cleaning prior to the script.
-* Work on Contract Req stage
+# To-do's:
+* Tweak contract cleaning process
+* Add buyer line chart to PO processing 
+* Finish payment processing slides
+* Finish requisition approval script
+* Start bids/RFP script, and incorporate a regression on number of bids ~ contract value.
+* Start contract req script
