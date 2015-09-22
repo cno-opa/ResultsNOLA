@@ -40,14 +40,21 @@ TotalAge<-function(df,StartDt,QtrEnd){
 QtrEnd<-as.Date("2015-9-30",format="%Y-%m-%d")
 
 ## Read in needed files
-contractPOapproval<-read.csv("Contract Approval Sequence POs.csv",skip=3) ## Report pulled from ECMS
-contractPOstatus<-read.csv("Contract PO Status.csv",skip=3) ## Report pulled from ECMS
-contractReqstatus<-read.csv("Contract Req Status.csv",skip=3) ## Report pulled from ECMS
-contractReqapproval<-read.csv("Contract Approval Sequence Reqs.csv",skip=3)  ##Report pulled from ECMS
-LawExec<-read.csv("Law and Executive Counsel Log.csv",na.strings="") ## List compiled by Law and Executive Counsel
-Adjustments<-read.xlsx2("Adjustments.xlsx",sheetIndex=1,colClasses=c("character","character","Date","Date","numeric","Date","character","Date","character"))
-BackFromVendor<-read.xlsx2("Adjustments.xlsx",sheetIndex=2,colClasses=c("character","character","Date","Date","numeric","Date","character","Date","character"))
-Ordinance<-read.xlsx2("Adjustments.xlsx",sheetIndex=3,colClasses=c("character","character","Date","Date","numeric","Date","character","Date","character")) 
+contractPOapproval<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Approval Sequence POs.csv",skip=3) ## Report pulled from ECMS
+contractPOstatus<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract PO Status.csv",skip=3) ## Report pulled from ECMS
+contractReqstatus<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Req Status.csv",skip=3) ## Report pulled from ECMS
+contractReqapproval<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Approval Sequence Reqs.csv",skip=3)  ##Report pulled from ECMS
+LawExec<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law and Executive Counsel Log.csv",na.strings="") ## List compiled by Law and Executive Counsel
+Adjustments<-read.xlsx2("O:/Projects/ReqtoCheckSTAT/Query Files/Adjustments.xlsx",sheetIndex=1,colClasses=c("character","character","Date","Date","numeric","Date","character","Date","character"))
+BackFromVendor<-read.xlsx2("O:/Projects/ReqtoCheckSTAT/Query Files/Adjustments.xlsx",sheetIndex=2,colClasses=c("character","character","Date","Date","numeric","Date","character","Date","character"))
+Ordinance<-read.xlsx2("O:/Projects/ReqtoCheckSTAT/Query Files/Adjustments.xlsx",sheetIndex=3,colClasses=c("character","character","Date","Date","numeric","Date","character","Date","character")) 
+
+## Read in, and merge Law Master files
+LawMaster<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law Master_hist.csv",strip.white=TRUE,na.strings="") ##Lists compiled by Law
+Law2<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law Master.csv",strip.white=TRUE,na.strings=""),PO.Number,K.Number,Govt=Govtal.Entity,Type.of.K)
+LawMaster<-merge(LawMaster,Law2,by=c("PO.Number","K.Number","Govt","Type.of.K"),all=TRUE)
+rm(Law2)
+LawMaster<-LawMaster[!is.na(LawMaster$K.Number),]
 
 #
 BackFromVendor<-select(BackFromVendor,PO:BackFromVendor)
@@ -59,12 +66,6 @@ Adjustments<-select(Adjustments,PO,AltID,AdjustedSignDate,Closed,CancelDate)
 Adjustments<-merge(Adjustments,BackFromVendor,by=c("PO","AltID"),all=TRUE)
 Adjustments<-merge(Adjustments,Ordinance,by=c("PO","AltID"),all=TRUE)
 
-## Read in, and merge Law Master files
-LawMaster<-read.csv("Law Master_hist.csv",strip.white=TRUE,na.strings="") ##Lists compiled by Law
-Law2<-select(read.csv("Law Master.csv",strip.white=TRUE,na.strings=""),PO.Number,K.Number,Govt=Govtal.Entity,Type.of.K)
-LawMaster<-merge(LawMaster,Law2,by=c("PO.Number","K.Number","Govt","Type.of.K"),all=TRUE)
-rm(Law2)
-LawMaster<-LawMaster[!is.na(LawMaster$K.Number),]
 
 ## Filter out unnecessary rows from Law-Exec log, and re-code invalid dates to 2015.
 LawExec<-LawExec[!is.na(LawExec$Description),]
@@ -202,11 +203,11 @@ contractMaster$Ordinance<-ifelse(is.na(contractMaster$Ordinance),"Unknown",ifels
 contractMaster$Type<-gsub("[[:punct:]]","",contractMaster$Type)
 
 ## Categorize contracts into different types for analyzing differentials in days to execute
-contractMaster$Group<-ifelse(startsWith(contractMaster$AltID,"m"),"Manual",
-                             ifelse(contractMaster$Ordinance=="Yes","Ordinance", 
-                                 ifelse(grepl("time",contractMaster$Type),"Time Only",
-                                      ifelse(contractMaster$Dept=="AVIATION","Aviation",
-                                          ifelse(is.na(contractMaster$Govt),"Other","Intergovernmental")))))   
+#contractMaster$Group<-ifelse(startsWith(contractMaster$AltID,"m"),"Manual",
+         #                    ifelse(contractMaster$Ordinance=="Yes","Ordinance", 
+                   #              ifelse(grepl("time",contractMaster$Type),"Time Only",
+                        #              ifelse(contractMaster$Dept=="AVIATION","Aviation",
+                        #                  ifelse(is.na(contractMaster$Govt),"Other","Intergovernmental")))))   
                                                                          
 contractMaster$Type2<-ifelse(grepl("cea",contractMaster$Type),"CEA",
                            ifelse(grepl("psa under 15k",contractMaster$Type),"PSA Under $15k",
@@ -261,7 +262,7 @@ contractMaster$Last_Qtr<-ifelse(!is.na(contractMaster$Last_Qtr),contractMaster$L
                                   ifelse(!is.na(contractMaster$Last_Qtr3),contractMaster$Last_Qtr3,
                                     ifelse(!is.na(contractMaster$Last_Qtr4),contractMaster$Last_Qtr4,NA))));class(contractMaster$Last_Qtr)<-"yearqtr"
 contractMaster<-select(contractMaster,-Last_Qtr2,-Last_Qtr3,-Last_Qtr4)
-contractMaster$First_Qtr<-as.yearqtr(contractMaster$ContractDate,format="%Y-%m-%d") ## Find quarter that a contract was created
+contractMaster$First_Qtr<-as.yearqtr(contractMaster$ReqComplete,format="%Y-%m-%d") ## Find quarter that a contract was created
 contractMaster$Qtr_Start<-as.Date(as.yearqtr(contractMaster$First_Qtr,format="%Y-%m-%d")) ##Find start date of quarter that a contract was created in ECMS.
 contractMaster$Qtr_End<-as.Date(as.yearqtr(contractMaster$Last_Qtr), frac = 1 )  ## Find end date of quarter that a contract was signed, if applicable
 contractMaster$Qtr_End<-ifelse(!is.na(contractMaster$CancelDate),as.Date( as.yearqtr(contractMaster$CancelDate), frac = 1 ),contractMaster$Qtr_End);class(contractMaster$Qtr_End)<-"Date"
@@ -273,13 +274,15 @@ contractMaster$Qtr_End<-ifelse(!is.na(contractMaster$CancelDate),as.Date( as.yea
            #     class(contractMaster$First_Qtr)<-"yearqtr"
 #contractMaster$Qtr_Start<-ifelse(is.na(contractMaster$ContractDate),as.Date(as.yearqtr(MaxQtr,format="%Y-%m-%d")),as.Date(as.yearqtr(contractMaster$ContractDate,format="%Y-%m-%d")))
  # class(contractMaster$Qtr_Start)<-"Date"
-contractMaster$First_Qtr2<-ifelse(!is.na(contractMaster$CancelDate) & is.na(contractMaster$First_Qtr),as.yearqtr(contractMaster$CancelDate,format="%Y-%m-%d"),NA)
-contractMaster$First_Qtr3<-ifelse(!is.na(contractMaster$SignDate) & is.na(contractMaster$First_Qtr),as.yearqtr(contractMaster$SignDate,format="%Y-%m-%d"),NA)
+contractMaster$First_Qtr2<-ifelse(!is.na(contractMaster$ContractDate) & is.na(contractMaster$First_Qtr),as.yearqtr(contractMaster$ContractDate,format="%Y-%m-%d"),NA)
+contractMaster$First_Qtr3<-ifelse(!is.na(contractMaster$CancelDate) & is.na(contractMaster$First_Qtr),as.yearqtr(contractMaster$CancelDate,format="%Y-%m-%d"),NA)
+contractMaster$First_Qtr4<-ifelse(!is.na(contractMaster$SignDate) & is.na(contractMaster$First_Qtr),as.yearqtr(contractMaster$SignDate,format="%Y-%m-%d"),NA)
 contractMaster$First_Qtr<-ifelse(!is.na(contractMaster$First_Qtr),contractMaster$First_Qtr,
                                  ifelse(!is.na(contractMaster$First_Qtr2),contractMaster$First_Qtr2,
-                                        ifelse(!is.na(contractMaster$First_Qtr3),contractMaster$First_Qtr3,NA)));class(contractMaster$First_Qtr)<-"yearqtr"
-df_max<-select(contractMaster,ContractDate,First_Qtr)%>%
-  subset(!is.na(ContractDate))  ## create dummy dataframe
+                                        ifelse(!is.na(contractMaster$First_Qtr3),contractMaster$First_Qtr3,
+                                               ifelse(!is.na(contractMaster$First_Qtr4),contractMaster$First_Qtr4,NA))));class(contractMaster$First_Qtr)<-"yearqtr"
+df_max<-select(contractMaster,ReqComplete,First_Qtr)%>%
+  subset(!is.na(ReqComplete))  ## create dummy dataframe
 MaxQtr<-max(df_max$First_Qtr)  ## Determine last quarter in reporting period
 #contractMaster$First_Qtr<-ifelse(!is.na(contractMaster$First_Qtr),contractMaster$First_Qtr,
                              #    ifelse(!is.na(contractMaster$SignDate),as.yearqtr(contractMaster$SignDate,format="%Y-%m-%d"),
@@ -295,7 +298,7 @@ contractMaster$POStatus<-ifelse(is.na(contractMaster$POStatus),"Not Processed",
                                               ifelse(contractMaster$POStatus=="Sent","Sent",
                                                      ifelse(contractMaster$POStatus=="Canceled","Canceled","Ready to Send")))))
 
-Anti-join outlier contracts that have been closed, but appear to be open 
+#Anti-join outlier contracts that have been closed, but appear to be open 
 #exclude<-contractMaster[is.na(contractMaster$Last_Qtr) & contractMaster$POStatus=="Sent"|contractMaster$POStatus=="Canceled" & is.na(contractMaster$Last_Qtr)|is.na(contractMaster$ContractDate),]
 exclude<-subset(contractMaster,is.na(contractMaster$Last_Qtr) & contractMaster$First_Qtr<"2015 Q1")
 contractMaster<-anti_join(contractMaster,exclude,by="PO")
@@ -432,11 +435,11 @@ print(Stage_plot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Closed Contracts by Stage.png")
 
 ## Plot days to execute broken down by process
-Execute_Process<-aggregate(Days_to_Execute~Last_Qtr+Group,data=Closedcontracts,mean)
-ExecuteProcess_Plot<-ggplot(Execute_Process,aes(x=factor(Last_Qtr),y=Days_to_Execute,group=Group,color=factor(Group)))
-ExecuteProcess_Plot<-ExecuteProcess_Plot+geom_line(stat="identity",size=1.25)
-ExecuteProcess_Plot<-ExecuteProcess_Plot+text(c(2,2),c(37,35),labels=c("Manual","Ordinance","Time Only","Aviation","CEA","PSA","Grant","Bid"))
-print(ExecuteProcess_Plot)
+#Execute_Process<-aggregate(Days_to_Execute~Last_Qtr+Group,data=Closedcontracts,mean)
+#ExecuteProcess_Plot<-ggplot(Execute_Process,aes(x=factor(Last_Qtr),y=Days_to_Execute,group=Group,color=factor(Group)))
+#ExecuteProcess_Plot<-ExecuteProcess_Plot+geom_line(stat="identity",size=1.25)
+#ExecuteProcess_Plot<-ExecuteProcess_Plot+text(c(2,2),c(37,35),labels=c("Manual","Ordinance","Time Only","Aviation","CEA","PSA","Grant","Bid"))
+#print(ExecuteProcess_Plot)
 
 ## Plot days to execute broken down by process
 Execute_Type<-aggregate(Days_to_Execute~Last_Qtr+Type2,data=Closedcontracts,mean)
@@ -467,11 +470,3 @@ write.csv(Adjustments,"O:/Projects/ReqtoCheckStat/Query Files/Output/Adjust.csv"
 write.csv(OrdinanceSign,"O:/Projects/ReqtoCheckStat/Query Files/Output/OrdSign.csv")
 write.csv(contracts,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/contracts.csv")
 write.csv(Ordinance,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Ordinances.csv")
-
-localdir<-"C:/Users/vbspencer/Desktop/Query Files/Output/contract master.csv"
-localdir2<-"C:/Users/vbspencer/Desktop/Query Files/Output/contracts.csv"
-write.csv(contracts,localdir2)
-write.csv(contractMaster,localdir)
-
-workdircontracts<-"O:/Projects/ReqtoCheckSTAT/Query Files/Output/"
-write.xlsx2(contractMaster,"Output/Contract Approval Master.xlsx",showNA=FALSE)
