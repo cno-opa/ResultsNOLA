@@ -17,3 +17,8 @@ This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT 
 * Figure out formulas for automatically determining distribution chart data label heights
 * Finish requisition approval script
 * Start contract req script
+
+### Instructions for running:
+* Set working directory to OPA share drive
+* Run Main.R
+	* For troubleshooting individual scripts, run Main.R through the sourcing of utility scripts, and then proceed to script in question.
