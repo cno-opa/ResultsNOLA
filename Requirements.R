@@ -12,3 +12,4 @@ library(zoo)# All
 library(ggplot2)# All
 library(gdata) # Payments
 library(bizdays)# Payments and Procurement
+library(scales)
