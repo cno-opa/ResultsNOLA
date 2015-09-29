@@ -21,4 +21,4 @@ This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT 
 ### Instructions for running:
 * Set working directory to OPA share drive
 * Run Main.R
-	* For troubleshooting individual scripts, run Main.R through the sourcing of utility scripts, and then proceed to script in question.
+	* If troubleshooting is needed troubleshooting individual scripts, first run Main.R through to line that sources utility-scripts, and then proceed to script in question.
