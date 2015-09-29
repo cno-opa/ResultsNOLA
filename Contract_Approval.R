@@ -13,14 +13,6 @@ source_https <- function(u, unlink.tmp.certs = FALSE) {
 source_https("https://raw.githubusercontent.com/cno-opa/graphics/master/plotters.R")
 source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Requirements.R")
 
-## Create function for days between dates in the contracting process among closed contracts, rounded to whole numbers
-ContractDays<-function(df,FirstDt,EndDt){
-  arguments<-as.list(match.call())  
-  EndDt<-eval(arguments$EndDt,df)
-  FirstDt<-eval(arguments$FirstDt,df)
-  round((strptime(EndDt,"%Y-%m-%d")-strptime(FirstDt,"%Y-%m-%d"))/86400,digits=0)
-}
-
 ## Create function for days in current stage for open contracts at end of the reporting period, rounded to whole numbers
 StageAge<-function(df,PrevDt,QtrEnd){
   arguments<-as.list(match.call())  
@@ -223,18 +215,18 @@ contractMaster$SignDate<-ifelse(is.na(contractMaster$AdjustedSignDate),as.Date(c
 contractMaster$ContractDate<-ifelse(is.na(contractMaster$ContractDate),as.Date(contractMaster$Admin_ContractDate,format="%m/%d/%Y"),as.Date(contractMaster$ContractDate,format="%m/%d/%Y")); class(contractMaster$ContractDate)<-"Date"
 
 ## Create variable for the average days from contract creation to execution (Days to Execute)
-contractMaster$Days_to_Execute<-ContractDays(contractMaster,ContractDate,SignDate)
+contractMaster$Days_to_Execute<-Days(contractMaster,ContractDate,SignDate)
 contractMaster$Days_to_Execute<-ifelse(contractMaster$Days_to_Execute<0,0,contractMaster$Days_to_Execute)
 
 ## Calculate days per stage
-contractMaster$LegalReview_Days<-ContractDays(contractMaster,ContractDate,LegalReview )
-contractMaster$DepAttorney_Days<-ContractDays(contractMaster,LegalReview,Dep_CityAttorney)
-contractMaster$CAO_Days<-ContractDays(contractMaster,Dep_CityAttorney,CAO)
-contractMaster$Ordinance_Days<-strptime(contractMaster$OrdinanceDate,format="%Y-%m-%d")-strptime(contractMaster$CAO,format="%Y-%m-%d") ##ContractDays doesn't work with this variable
-contractMaster$SentVendor_Days<-ContractDays(contractMaster,CAO_Ord,SentVendor)
-contractMaster$DaysWithVendor<-ContractDays(contractMaster,SentVendor,VendorReconciled)
-contractMaster$DownForSignature_Days<-ContractDays(contractMaster,VendorReconciled,DownForSignature)
-contractMaster$ExecutiveSignature_Days<-ContractDays(contractMaster,ReadyforExec,SignDate)
+contractMaster$LegalReview_Days<-Days(contractMaster,ContractDate,LegalReview )
+contractMaster$DepAttorney_Days<-Days(contractMaster,LegalReview,Dep_CityAttorney)
+contractMaster$CAO_Days<-Days(contractMaster,Dep_CityAttorney,CAO)
+contractMaster$Ordinance_Days<-strptime(contractMaster$OrdinanceDate,format="%Y-%m-%d")-strptime(contractMaster$CAO,format="%Y-%m-%d") ##Days doesn't work with this variable
+contractMaster$SentVendor_Days<-Days(contractMaster,CAO_Ord,SentVendor)
+contractMaster$DaysWithVendor<-Days(contractMaster,SentVendor,VendorReconciled)
+contractMaster$DownForSignature_Days<-Days(contractMaster,VendorReconciled,DownForSignature)
+contractMaster$ExecutiveSignature_Days<-Days(contractMaster,ReadyforExec,SignDate)
 
 ## Re-calculate any negative days to zero days
 contractMaster$Ordinance_Days<-ifelse(contractMaster$Ordinance_Days<0,NA,contractMaster$Ordinance_Days)
@@ -289,7 +281,7 @@ MaxQtr<-max(df_max$First_Qtr)  ## Determine last quarter in reporting period
                                   #      ifelse(!is.na(contractMaster$CancelDate),as.yearqtr(contractMaster$CancelDate,format="%Y-%m-%d"),NA)));class(contractMaster$First_Qtr)<-"yearqtr"
 contractMaster$Qtr_Start<-ifelse(is.na(contractMaster$First_Qtr),as.Date(as.yearqtr(MaxQtr,format="%Y-%m-%d")),as.Date(as.yearqtr(contractMaster$First_Qtr,format="%Y-%m-%d")));class(contractMaster$Qtr_Start)<-"Date"
 contractMaster<-subset(contractMaster,!is.na(contractMaster$First_Qtr))
-contractMaster<-select(contractMaster,-First_Qtr2,-First_Qtr3)
+contractMaster<-select(contractMaster,-First_Qtr2,-First_Qtr3,-First_Qtr4)
   
 ## Re-code POStatus column so contracts that don't have a POStatus will be coded as "Not Processed."
 contractMaster$POStatus<-ifelse(is.na(contractMaster$POStatus),"Not Processed",
@@ -327,24 +319,25 @@ summary_merge<-merge(Qtr_First_summary,Qtr_End_summary,by="Qtr",all=TRUE)
 summary_merge$cumulative_opened<-cumsum(summary_merge$Opened)
 summary_merge$cumulative_closed<-cumsum(summary_merge$Closed)
 summary_merge$cumulative_net<-summary_merge$cumulative_opened-summary_merge$cumulative_closed
-summary_merge<-subset(summary_merge,Qtr>"2012 Q3")
+summary_merge<-subset(summary_merge,Qtr>"2012 Q4")
 #summary_merge$qtr_net<-summary_merge$Opened-summary_merge$Closed
 #summary_merge$qtr_net<-mutate(summary_merge,Opened-Closed)
 #summary<-subset(summary_merge,!is.na(Qtr) & Qtr>"2012 Q2")
-openplot<-ggplot(summary_merge,aes(x=factor(Qtr),y=cumulative_net,group=1))
-openplot<-openplot+geom_bar(stat="identity",fill="purple",size=0.6)+ggtitle("Contracts in Queue at the End of Quarter")+ylab("Number of Contracts")+xlab("Quarters")
-openplot<-openplot+geom_text(aes(y=cumulative_net,ymax=cumulative_net+1,label=cumulative_net),vjust=-.25)
-print(openplot) ## Create chart of open contracts at end of each quarter
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Open Contracts.png")
-summary_melt<-select(summary_merge,Qtr,Opened,Closed)
+#openplot<-ggplot(summary_merge,aes(x=factor(Qtr),y=cumulative_net,group=1))
+#openplot<-openplot+geom_bar(stat="identity",fill="purple",size=0.6)+ggtitle("Contracts in Queue at the End of Quarter")+ylab("Number of Contracts")+xlab("Quarters")
+#openplot<-openplot+geom_text(aes(y=cumulative_net,ymax=cumulative_net+1,label=cumulative_net),vjust=-.25)
+#print(openplot) ## Create chart of open contracts at end of each quarter
+#ggsave("./ReqtoCheckSTAT/Query Files/Slides/Open Contracts.png")
+summary_melt<-select(summary_merge,Qtr,Opened,Closed,cumulative_net)
 summary_melt<-subset(summary_melt,Qtr>"2012 Q4")
 summary_melt<-melt(summary_melt,id.vars="Qtr")
-Open_closedplot<-ggplot(summary_melt,aes(x=factor(Qtr),y=value))+
-  geom_bar(width=0.8,aes(fill=variable),position="dodge",stat="identity") ## Create chart of open and closed contracts by quarter
-    Open_closedplot<-Open_closedplot+ggtitle("Contracts Opened and Closed by Quarter")+xlab("Quarters")+ylab("Number of Contracts")
-      Open_closedplot<-Open_closedplot+geom_text(aes(y=value,ymax=value,label=value),position=position_dodge(width=0.7),size=4)
-print(Open_closedplot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Opened and Closed Contracts.png")
+Open_closedplot<-ggplot(summary_melt,aes(x=factor(Qtr),y=value,fill=variable))+
+  geom_bar(subset=.(variable=="Opened"|variable=="Closed"),width=0.8,aes(fill=variable),position="dodge",stat="identity")+
+    ggtitle("Contracts Opened,Closed, and in Queue by Quarter")+xlab("Quarters")+ylab("Number of Contracts")+
+      geom_line(subset=.(variable=="cumulative_net"),aes(fill=variable,group=variable))+
+        geom_text(aes(y=value,ymax=value,label=value),position=position_dodge(width=0.7),size=4)
+  print(Open_closedplot)
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Opened_Closed_In Queue_Contracts.png")
 
 ## Subset contract master list into separate list of contracts that have been closed and those currently open
 Opencontracts<-subset(contractMaster,is.na(Last_Qtr))
@@ -384,18 +377,18 @@ Stages<- aggregate(Days_in_Stage ~ Last_Qtr + Stage, data = Stages, mean)
 levels(Stages$Stage)[levels(Stages$Stage)=="LegalReview_Days"]<-"Legal Review"
 levels(Stages$Stage)[levels(Stages$Stage)=="DepAttorney_Days"]<-"Dep. City Attorney"
 levels(Stages$Stage)[levels(Stages$Stage)=="CAO_Days"]<-"CAO"
-levels(Stages$Stage)[levels(Stages$Stage)=="Ordinance_Days"]<-"Ordinance"
+levels(Stages$Stage)[levels(Stages$Stage)=="Ordinance_Days"]<-"Ordinance*"
 levels(Stages$Stage)[levels(Stages$Stage)=="SentVendor_Days"]<-"Sent Vendor"
 levels(Stages$Stage)[levels(Stages$Stage)=="DaysWithVendor"]<-"Days with Vendor"
 levels(Stages$Stage)[levels(Stages$Stage)=="DownForSignature_Days"]<-"Down to Exec"
 levels(Stages$Stage)[levels(Stages$Stage)=="ExecutiveSignature_Days"]<-"Executed"
 Stage_plot<-ggplot(Stages,aes(x=factor(Last_Qtr),y=Days_in_Stage,group=1))
-Stage_plot<-Stage_plot+geom_line(stat="identity",fill="purple",size=0.6)
+Stage_plot<-Stage_plot+geom_bar(stat="identity",fill=darkBlue,size=0.6)
 Stage_plot<-Stage_plot+facet_grid(facets=.~Stage)
-Stage_plot<-Stage_plot+ggtitle("Average Days per Stage for Executed Contracts")
+Stage_plot<-Stage_plot+ggtitle("Average Days per Stage for Executed Contracts 2013-Present")
 Stage_plot<-Stage_plot+xlab("Quarters")
 Stage_plot<-Stage_plot+ylab("Days")
-Stage_plot<-Stage_plot+theme(strip.text.x=element_text(size=8))
+Stage_plot<-Stage_plot+theme(strip.text.x=element_text(size=8),axis.text.x=element_blank())
 print(Stage_plot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Closed Contracts by Stage.png")
 
@@ -407,11 +400,11 @@ Execution<-Execution+ggtitle("Average Days to Execute Contracts by Quarter")
 Execution<-Execution+xlab("Quarters")
 Execution<-Execution+ylab("Days")
 Execution<-Execution+geom_text(aes(y=Sign,ymax=Sign+1,label=round(Sign,1)),position=position_dodge(width=0.9),vjust=-.5,size=5)
-Execution<-Execution+geom_hline(aes(yintercept=30),colour="#FF0000",linetype=2,size=1.2)+theme(legend.position="top",legend.text=)
+Execution<-Execution+geom_hline(aes(yintercept=30),colour="#FF0000",linetype=2,size=1.2)+theme(legend.position="Top")
 print(Execution)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Days to Execute.png")
 
-## Plot days in stage for executed contracts
+## Plot age per stage for contracts in queue at the end of each quarter (WORK IN PROGRESS)
 Stage_Ages<-select(Opencontracts,PO:AltID,AttorneyReview_Age:ExecutiveSignature_Age)
 Stage_Ages<-melt(select(Stage_Ages,PO,Last_Qtr,AttorneyReview_Age:ExecutiveSignature_Age),id.var=c("PO","Last_Qtr"),variable.name="Stage",value.name="Age_in_Stage")
 Stage_Ages$Days_in_Stage<-as.numeric(Stage_Ages$Age_in_Stage)
@@ -419,7 +412,7 @@ Stages<- aggregate(Age_in_Stage ~ Last_Qtr + Stage, data = Stages, mean)
 levels(Stages$Stage)[levels(Stages$Stage)=="AttorneyReview_Age"]<-"Legal Review"
 levels(Stages$Stage)[levels(Stages$Stage)=="DepAttorney_Age"]<-"Dep. City Attorney"
 levels(Stages$Stage)[levels(Stages$Stage)=="CAO_Age"]<-"CAO"
-levels(Stages$Stage)[levels(Stages$Stage)=="Ordinance_Age"]<-"Ordinance"
+levels(Stages$Stage)[levels(Stages$Stage)=="Ordinance_Age"]<-"Ordinance*"
 levels(Stages$Stage)[levels(Stages$Stage)=="SendVendor_Age"]<-"Sent Vendor"
 levels(Stages$Stage)[levels(Stages$Stage)=="AwaitingVendor_Age"]<-"Days with Vendor"
 levels(Stages$Stage)[levels(Stages$Stage)=="BringToExec_Age"]<-"Down to Exec"
