@@ -14,12 +14,19 @@ This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT 
 
 ### Status of ReqtoCheck scripted sections (as of 9/30).
 * ITI - N/A
+
 * Requisitions - In Progress
+
 * Procurement - Complete, with minor chart format tweaks
+
 * Bids/RFPs/DBEs - Bids and RFPs complete, with minor format tweaks.  DBEs in progress.
+
 * Contract reqs - Not started.  Will begin after requisitions are complete.
+
 * Contract purchase orders - Mostly complete, with aging charts needed. Also need to optimize cleaning.
-* Payments - Great Plains complete, AFIN in progress
+
+* Payments - Great Plains complete except for department-level table/chart, AFIN in progress
+
 * Invoice Pipelines - Not started
 
 
