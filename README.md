@@ -1,16 +1,5 @@
-This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT analyses. ReqtoCheckSTAT reviews performance data related to contracting out goods and services, from the requisition of budgeted funds to the issuance of a check for goods or services rendered. 
+This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT analyses. ReqtoCheckSTAT reviews City of New Orleans performance data related to contracting out goods and services, from the requisition of budgeted funds to the issuance of a check for goods or services rendered. 
 
-###The departments involved in the ReqtoCheck process are:
-* Budget Office
-* Capital Projects Administration
-* Office of Community Development
-* Department of Finance
-	* Bureau of Accounting
-	* Bureau of Purchasing
-* Department of Information Technology & Innovation
-* Law Department
-* Department of Public Works
-* Office of Supplier Diversity
 
 ### Status of ReqtoCheck scripted sections (as of 9/30).
 * ITI - N/A
