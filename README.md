@@ -12,11 +12,20 @@ This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT 
 * Bureau of Purchasing
 * Office of Supplier Diversity
 
-###To-do's:
-* Tweak contract cleaning process
+### Status of ReqtoCheck scripted sections (as of 9/30).
+* ITI - N/A
+* Requisitions - In Progress
+* Procurement - Complete, with minor chart format tweaks
+* Bids/RFPs/DBEs - Bids and RFPs complete, with minor format tweaks.  DBEs in progress.
+* Contract reqs - Not started.  Will begin after requisitions are complete.
+* Contract purchase orders - Mostly complete, with aging charts needed. Also need to optimize cleaning.
+* Payments - Great Plains complete, AFIN in progress
+* Invoice Pipelines - Not started
+
+
+###General to-do's:
 * Figure out formulas for automatically determining distribution chart data label heights
-* Finish requisition approval script
-* Start contract req script
+* Figure out formula for determining age per quarter
 
 ### Instructions for running:
 * Set working directory to OPA share drive
