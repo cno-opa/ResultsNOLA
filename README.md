@@ -6,22 +6,22 @@ This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT 
 
 * Requisitions - In Progress
 
-* Procurement - Complete, with minor chart format tweaks
+* Procurement - Complete, with minor chart format tweaks needed.
 
-* Bids/RFPs/DBEs - Bids and RFPs complete, with minor format tweaks.  DBEs in progress.
+* Bids/RFPs/DBEs - Bids and RFPs complete, with minor format tweaks needed.  DBEs in progress.
 
 * Contract reqs - Not started.  Will begin after requisitions are complete.
 
 * Contract purchase orders - Mostly complete, with aging charts needed. Also need to optimize cleaning.
 
-* Payments - Great Plains complete except for department-level table/chart, AFIN in progress
+* Payments - Great Plains complete except for dept coding anddepartment-level table/chart, AFIN charts in progress
 
 * Invoice Pipelines - Not started
 
 
 ###General to-do's:
 * Figure out formulas for automatically determining distribution chart data label heights
-* Figure out formula for determining age per quarter
+* Figure out function for determining age per quarter
 
 ### Instructions for running:
 * Set working directory to OPA share drive
