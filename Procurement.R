@@ -1,58 +1,38 @@
-### This script to generate the graph of business days for the Purchasing Bureau to convert requisitions into purchase orders, 
-## with a target of 4 business days.
+### This script to generate the graph of business days for the Purchasing Bureau to convert requisitions into purchase orders, with a target of 4 business days.
 
-.libPaths("C:/Rpackages")
-
-## Download OPA theme, as well as required packages from OPA github account
-source_https <- function(u, unlink.tmp.certs = FALSE) {
-  require(RCurl)
-  
-  if(!file.exists("cacert.pem")) download.file(url="http://curl.haxx.se/ca/cacert.pem", destfile = "cacert.pem")
-  script <- getURL(u, followlocation = TRUE, cainfo = "cacert.pem")
-  if(unlink.tmp.certs) unlink("cacert.pem")
-  
-  eval(parse(text = script), envir= .GlobalEnv)
-}
-source_https("https://raw.githubusercontent.com/cno-opa/graphics/master/plotters.R")
-source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Requirements.R")
-
-## read, clean, and format
+## read, clean, and format data files
 headings<-c("Dept","Req","FinanceDate","POnumber","POdate","Cost","Vendor","PrintDate","BuyerInitials","Buyer","WorkingDays")
-Reqs<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/ProcurementReqProcessing.csv",col.names=headings,stringsAsFactors=FALSE,skip=3)
+POs<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/ProcurementReqProcessing.csv",col.names=headings,stringsAsFactors=FALSE,skip=3)
 ReqStatus<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Req Status.csv",skip=3),Req=REQ_NBR,Status=STATUS)
 #Category<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/PObyCategory.csv",skip=3),Req=REQ_NBR,Descr=DESC_LONG)
 
 # Standardize req number variables in two data sets
-Reqs<-merge(Reqs,ReqStatus,by="Req",all.x=TRUE)
+POs<-merge(POs,ReqStatus,by="Req",all.x=TRUE)
 #Reqs<-merge(Reqs,Category,by="Req",all.x=TRUE)
 
 ## Convert dollar amount column to numeric class for readability
-Reqs$Cost<-as.numeric(sub("\\$","",Reqs$Cost))
+POs$Cost<-as.numeric(sub("\\$","",POs$Cost))
 
-## Clean out errors
-Exclude<-Reqs[Reqs$Vendor=="Independent Stationers" & Reqs$Cost==30.48|Reqs$Vendor=="Independent Stationers" & Reqs$Cost==0|Reqs$Vendor=="FASTENAL COMPANY" & Reqs$Cost==0 | Reqs$Vendor=="Independent Stationers" & Reqs$Cost==30.44 | Reqs$Vendor=="Independent Stationers" & Reqs$Cost==34.80 | Reqs$Vendor=="Independent Stationers" & Reqs$Cost==53.88 | Reqs$Vendor=="Grainger, Inc." & Reqs$Cost==99.09,]
-Reqs<-anti_join(Reqs,Exclude,by="Req")
+## Clean out purchase orders that have been cancelled, as well as punch-outs that have created errors.
+Exclude<-POs[POs$Vendor=="Independent Stationers" & POs$Cost==30.48|POs$Vendor=="Independent Stationers" & POs$Cost==0|POs$Vendor=="FASTENAL COMPANY" & POs$Cost==0 | POs$Vendor=="Independent Stationers" & POs$Cost==30.44 | POs$Vendor=="Independent Stationers" & POs$Cost==34.80 | POs$Vendor=="Independent Stationers" & POs$Cost==53.88 | POs$Vendor=="Grainger, Inc." & POs$Cost==99.09|POs$Cost==0,]
+POs<-anti_join(POs,Exclude,by="Req")
 
-
-## names(Reqs)=headings
-## Reqs<-Reqs[-c(1,2,3),]
-Reqs$FinanceDate<-as.Date(Reqs$FinanceDate,"%m/%d/%Y")
-Reqs$POdate<-as.Date(Reqs$POdate,"%m/%d/%Y")
-Reqs<-filter(Reqs,POdate>FinanceDate)
-Reqs$Qtr<-as.yearqtr(Reqs$POdate,format="%m/%d/%Y")
+POs$FinanceDate<-as.Date(POs$FinanceDate,"%m/%d/%Y")
+POs$POdate<-as.Date(POs$POdate,"%m/%d/%Y")
+#POs<-filter(POs,POdate>FinanceDate)
+POs$Qtr<-as.yearqtr(POs$POdate,format="%m/%d/%Y")
 
 
-## set up business day calculation 
-NOLA_calendar<-Calendar(holidays=c("2011-1-3","2011-1-17","2011-12-25","2011-3-8","2011-4-22","2011-9-5","2011-5-30","2011-7-","2012-1-2", "2012-1-16",	"2012-2-21",	"2012-4-6",	"2012-5-28",	"2012-7-4",	"2012-9-3",	"2012-11-22",	"2012-11-23",	"2012-12-25",	"2013-1-1",	"2013-1-21",	"2013-2-12",	"2013-3-29",	"2013-5-27",	"2013-7-4",	"2013-9-2",	"2013-11-28",	"2013-11-29",	"2013-12-25",	"2014-1-1",	"2014-1-20",	"2014-3-4",	"2014-4-18",	"2014-5-26",	"2014-7-4",	"2014-9-1",	"2014-11-27",	"2014-11-28",	"2014-12-25",	"2015-1-1",	"2015-1-19",	"2015-2-17",	"2015-4-3",	"2015-5-25",	"2015-7-3",	"2015-9-7",	"2015-11-26",	"2015-11-27",	"2015-12-25"),start.date="2012-1-1",end.date="2015-12-31",name="NOLA_calendar",weekdays=c("saturday","sunday"))
-Reqs$WorkingDays<-bizdays(Reqs$FinanceDate,Reqs$POdate,NOLA_calendar)
+## Calculate business days (this relies on NOLA_calendar read from github)
+POs$WorkingDays<-bizdays(POs$FinanceDate,POs$POdate,NOLA_calendar)
+POs$WorkingDays<-POs$WorkingDays+1
 
 ## Create distribution bins for business days to process
-Reqs$Under4<-ifelse(Reqs$WorkingDays<=4,1,0)
-Reqs$Over4<-ifelse(Reqs$WorkingDays<=4,0,1)
+POs$Under4<-ifelse(POs$WorkingDays<=4,1,0)
+POs$Over4<-ifelse(POs$WorkingDays<=4,0,1)
 
 ## Plot the business days to process by quarter
-Days2PO<-aggregate(data=Reqs,WorkingDays~Qtr,FUN=mean)
-Days2PO<-subset(Days2PO,Qtr>"2012 Q4")
+Days2PO<-aggregate(data=POs,WorkingDays~Qtr,FUN=mean)
 Purchasing<-ggplot(Days2PO,aes(x=factor(Qtr),y=WorkingDays))
 Purchasing<-Purchasing+geom_bar(stat="identity",fill="steelblue")
 Purchasing<-Purchasing+ggtitle("Average Business Days to Process Purchase Orders")
@@ -64,16 +44,16 @@ print(Purchasing)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Days to PO.png")
 
 ## Plot the distribution percentages of business days to process by quarter
-POdist<-select(Reqs,Qtr,Under4,Over4)
+POdist<-select(POs,Qtr,Under4,Over4)
 POdist<-aggregate(cbind(POdist$Under4,POdist$Over4)~Qtr,data=POdist,FUN=sum);colnames(POdist)[grepl("V1", colnames(POdist))] <- "Under4";colnames(POdist)[grepl("V2", colnames(POdist))] <- "Over4"
 POdist<-subset(POdist,Qtr>"2012 Q4")
   POdist$Total<-POdist$Under4+POdist$Over4
       POdist$Under_4<-round(POdist$Under4/POdist$Total,3)
           POdist$Over_4<-round(POdist$Over4/POdist$Total,3)
 POdist<-select(POdist,Qtr,Under_4,Over_4)
+    undermaxPO<-max(POdist$Under_4)
 POdist<-melt(POdist,id.vars="Qtr")
-POdist$position<-ifelse(POdist$variable=="Over_4",.95,.75) ## Manually set height of data labels to appear at 95% and 75% on y axis
-#POdist<-ddply(POdist,.(Qtr),transform,position=cumsum(value)-0.5)
+POdist$position<-ifelse(POdist$variable=="Under_4",undermaxPO-.10,1-((1-undermaxPO)/2)) # calculate height of data labels
 Dist_plot<-ggplot(POdist,aes(x = factor(Qtr), y = value,fill = variable)) + 
   geom_bar(position = "stack",stat = "identity") + 
     scale_y_continuous(labels = percent_format())+
@@ -84,5 +64,21 @@ Dist_plot<-ggplot(POdist,aes(x = factor(Qtr), y = value,fill = variable)) +
 print(Dist_plot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/PO Distribution.png")
 
+
+## Plot business days to process by Buyer
+r_period<-max(POs$Qtr)
+POs$Buyer2<-ifelse(POs$Buyer=="Bernice Ealy","BE",
+                    ifelse(POs$Buyer=="Kai Wells","KW",
+                           ifelse(POs$Buyer=="Burma Jackson","BJ",
+                                  ifelse(POs$Buyer=="Stephanie Warren","SW",NA))))
+Buyers<-aggregate(WorkingDays~Qtr+Buyer2,data=POs,mean);Buyers$WorkingDays<-round(Buyers$WorkingDays,2)
+Buyer_Plot<-ggplot(Buyers,aes(x=factor(Qtr),y=WorkingDays,group=Buyer2,color=factor(Buyer2)))+
+    geom_line(stat="identity",size=1)+
+      geom_hline(aes(yintercept=4,colour="#FF0000"),linetype=2,size=1)+
+        ylab("Business Days")+xlab("Quarter")+
+          geom_text(aes(label=ifelse(Qtr==r_period,WorkingDays,"")))
+print(Buyer_Plot)
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Buyer Plot.png")
+
 ## Export the data
-write.csv(Reqs,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Purchase Orders.csv")
+write.csv(POs,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Purchase Orders.csv")
