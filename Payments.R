@@ -1,64 +1,64 @@
-Set library path to writable directory, if needed
-#.libPaths("C:/Rpackages")
-
-## Download OPA theme, as well as required packages from OPA github account
-source_https <- function(u, unlink.tmp.certs = FALSE) {
-  require(RCurl)
-  
-  if(!file.exists("cacert.pem")) download.file(url="http://curl.haxx.se/ca/cacert.pem", destfile = "cacert.pem")
-  script <- getURL(u, followlocation = TRUE, cainfo = "cacert.pem")
-  if(unlink.tmp.certs) unlink("cacert.pem")
-  
-  eval(parse(text = script), envir= .GlobalEnv)
-}
-source_https("https://raw.githubusercontent.com/cno-opa/graphics/master/plotters.R")
-source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Requirements.R")
-source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/NOLA_calendar.R") # Calendar for business day calculation
+## This script analyzes the processing of general fund, as well as capital and grant payments, defined as those payments made through Great Plains and AFIN, respectively.
 
 ## Read in needed files
-GP<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Great Plains master.csv") 
+GP<-read.csv("O:/Projects/ReqtoCheckStat/Query Files/Great Plains master.csv") ### "General Fund" data collected from Great Plains
+AFIN<-select(read.csv("O:/Projects/ReqtoCheckStat/Query Files/AFIN master.csv"),Check,Fund,PV,Department,Vendor,InvoiceDate,StampDate,APDate,CheckDate,Amount) ### "Capital/Grant Fund" data collected from AFIN
+Orgs<-select(read.csv("O:/Projects/ReqtoCheckStat/Query Files/Org Codes.csv"),Org_code=Segment.ID,Dept2=Description)
 #Dep_code<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Dept Codebook.csv")
 
-## Parse Purchase Order numbers to be consistent with BuySpeed
+## Great Plains data cleaning
+
+## Parse Great Plains Purchase Order numbers to be consistent with BuySpeed
 GP$Vendor<-gsub("\\/.*","",x=GP$Vendor)
 GP$Purchase.Order.Number<-gsub("\\:.*","",x=GP$Purchase.Order.Number)
 
-## Trim white space from beginning of department column
+## Trim white space from beginning of Great Plains department column, and convert to lower-case
 trim <- function (x) gsub("^\\s+|\\s+$", "", x)
 GP$Department<-trim(GP$Department)
 GP$Account.String<-trim(GP$Account.String)
-
-##
 GP$Department<-tolower(GP$Department)
 
-## Convert relevant columns into POSIXct
+## Convert relevant columns into date format 
 GP$Check.Date<-as.Date(GP$Check.Date,format="%m/%d/%Y")
 GP$Invoice.Date<-as.Date(GP$Invoice.Date,format="%m/%d/%Y")
 GP$Accounts.Payable.Date<-as.Date(GP$Accounts.Payable.Date,format="%m/%d/%Y")
 GP$Stamp.Date<-as.Date(GP$Stamp.Date,format="%m/%d/%Y")
+AFIN$CheckDate<-as.Date(AFIN$CheckDate,format="%m/%d/%Y")
+AFIN$InvoiceDate<-as.Date(AFIN$InvoiceDate,format="%m/%d/%Y")
+AFIN$APDate<-as.Date(AFIN$APDate,format="%m/%d/%Y")
+AFIN$StampDate<-as.Date(AFIN$StampDate,format="%m/%d/%Y")
 
-##
+## Adjust 
 GP$Accounts.Payable.Date<-ifelse(GP$Accounts.Payable.Date>GP$Check.Date,GP$Check.Date,GP$Accounts.Payable.Date);class(GP$Accounts.Payable.Date)<-"Date"
+AFIN$APDate<-ifelse(AFIN$APDate>AFIN$CheckDate,AFIN$CheckDate,AFIN$APDate);class(AFIN$APDate)<-"Date"
 
 ## Calculate business days to process checks by Accounts Payable
 GP$AP<-bizdays(GP$Accounts.Payable.Date,GP$Check.Date,NOLA_calendar)
+GP$AP<-GP$AP+1
+AFIN$AP<-bizdays(AFIN$APDate,AFIN$CheckDate,NOLA_calendar)
+AFIN$AP<-AFIN$AP+1
 
 ## Calculate total days from invoice date (or stamp date, if applicable) to check date
 GP$TotalDays<-ifelse(is.na(GP$Stamp.Date),Days(GP,Invoice.Date,Check.Date),Days(GP,Stamp.Date,Check.Date))
 GP$TotalDays<-ifelse(GP$TotalDays<0,0,GP$TotalDays) ### Adjust any payments with a check date prior to invoice date to 0 days
+AFIN$TotalDays<-ifelse(is.na(AFIN$StampDate),Days(AFIN,InvoiceDate,CheckDate),Days(AFIN,StampDate,CheckDate))
+AFIN$TotalDays<-ifelse(AFIN$TotalDays<0,0,AFIN$TotalDays) ### Adjust any payments with a check date prior to invoice date to 0 days
 
 ## Segment payments into quarters
 GP$Qtr<-as.yearqtr(GP$Check.Date,format="%Y-%m-%d") 
+AFIN$Qtr<-as.yearqtr(AFIN$CheckDate,format="%Y-%m-%d")
 
-## Recode account string to generate department variable
-GP$Account_recode<-substr(GP$Account.String,1,4)
-GP$Account_recode2<-substr(GP$Account.String,1,9)
-GP$Dept<-ifelse(startsWith(GP$Account_recode,"0200"),"Aviation",
-                ifelse(startsWith(GP$Account_recode,"0691"),"Library",
-                       ifelse(startsWith(GP$Account_recode,"0203"),"Parks & Parkways",
-                              ifelse(startsWith(GP$Account_recode,"0205"),"NORDC",
-                                     ifelse(startsWith(GP$Account_recode,"0138"),"OCD",
-                                            ifelse(startsWith(GP$Account_recode,"0139"),"Mayor's Office - Other",NA))))))
+## Recode account string to generate department variable.  NEED TO FINISH DEPT RE-CODE.
+GP$Org_code<-substr(GP$Account.String,11,14)
+GP<-merge(GP,Orgs,by="Org_code",all.x=TRUE)
+
+#GP$Account_recode2<-substr(GP$Account.String,1,9)
+#GP$Dept<-ifelse(startsWith(GP$Account_recode,"0200"),"Aviation",
+           #     ifelse(startsWith(GP$Account_recode,"0691"),"Library",
+                     #  ifelse(startsWith(GP$Account_recode,"0203"),"Parks & Parkways",
+                          #    ifelse(startsWith(GP$Account_recode,"0205"),"NORDC",
+                              #       ifelse(startsWith(GP$Account_recode,"0138"),"OCD",
+                                   #         ifelse(startsWith(GP$Account_recode,"0139"),"Mayor's Office - Other",NA))))))
                 
 
 ##
@@ -85,7 +85,7 @@ AP_Dayplot<-AP_Dayplot+ylab("Business Days")
 AP_Dayplot<-AP_Dayplot+geom_text(aes(y=AP,ymax=AP+1,label=round(AP,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)
 AP_Dayplot<-AP_Dayplot+geom_hline(aes(yintercept=7,colour="#FF0000"),linetype=2,size=1)
 print(AP_Dayplot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/AP Days.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/General Fund AP Days.png")
 
 ## Plot the distribution percentages of business days to process by quarter
 APdist<-select(GP,Qtr,APUnder7,AP7_14,APOver14)
@@ -107,7 +107,7 @@ APDist_plot<-ggplot(APdist,aes(x = factor(Qtr), y = value,fill = variable)) +
   geom_text(aes(ymax=value,y=position,label=percent(value)),size=3.5)+
   scale_fill_manual(values=c(darkBlue,lightBlue,red),name=" ",labels=c("<=7 Business Days","7-14 Business Days",">14 Business Days"))
 print(APDist_plot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/AP Distribution.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/General Fund AP Distribution.png")
 
 ## Plot average days from invoice date to check date
 Check_Days<-aggregate(data=GP,TotalDays~Qtr,FUN=mean)
@@ -119,7 +119,7 @@ Check_Dayplot<-Check_Dayplot+ylab("Days")
 Check_Dayplot<-Check_Dayplot+geom_text(aes(y=TotalDays,ymax=TotalDays+1,label=round(TotalDays,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)
 Check_Dayplot<-Check_Dayplot+geom_hline(aes(yintercept=45,colour="#FF0000"),linetype=2,size=1)
 print(Check_Dayplot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Invoice to Check Days.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/GP Invoice to Check Days.png")
 
 
 ## Plot the distribution percentages of days from invoice to check
@@ -168,7 +168,8 @@ CheckDist_plot<-ggplot(Checkdist,aes(x = factor(Qtr), y = value,fill = variable)
   geom_text(aes(ymax=value,y=position,label=percent(value)),size=4)+
   scale_fill_manual(values=c("339900","green",lightBlue,darkBlue,red) ,name=" ",labels=c("<=4 Business Days",">4 Business Days"))
 print(CheckDist_plot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Payment Distribution.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/General Fund Payment Distribution.png")
 
 ## Export cleaned data set
-read.csv(GP,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Great Plains.csv")
+write.csv(GP,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Great Plains.csv")
+write.csv(AFIN,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/AFIN.csv")
