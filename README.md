@@ -1,10 +1,10 @@
 This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT analyses. ReqtoCheckSTAT reviews City of New Orleans performance data related to contracting out goods and services, from the requisition of budgeted funds to the issuance of a check for goods or services rendered. 
 
 
-### Status of ReqtoCheck scripted sections (as of 9/30).
+### Status of ReqtoCheck scripted sections (as of 10/3).
 * ITI - N/A
 
-* Requisitions - In Progress
+* Requisitions - Need to figure out how to isolate max dept approval.
 
 * Procurement - Complete, with minor chart format tweaks needed.
 
