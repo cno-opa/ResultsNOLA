@@ -11,7 +11,7 @@ contractReqstatus<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contr
 contractReqapproval<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Contract Approval Sequence Reqs.csv",skip=3)
                     ,Req=REQ_NBR,ReqApprove=APPROVAL_DATE,ReqApprover=REQ_APPROVER)##Report pulled from ECMS
 LawExec<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law and Executive Counsel Log.csv",na.strings="")
-                          ,PO=PO.Number,AltID=K.Number,BackFromVendor=Date.Received.by.Law,DownForSignature=Date.Received.by.EX,AdjustedSignDate=Date.Signed.by.MAY) ## List compiled by Law and Executive Counsel
+                          ,PO=PO.Number,AltID=K.Number,BackFromVendor=Date.Received.by.Law,DownForSignature=Date.Received.by.EX,AdjustedSignDate=Date.Signed.by.MAY,Vendor,Dept=Description) ## List compiled by Law and Executive Counsel
 Adjustments<-read.xlsx2("O:/Projects/ReqtoCheckSTAT/Query Files/Adjustments.xlsx",sheetIndex=1,colClasses=c("character","character","Date","Date","numeric","Date","character","Date","character"))
 
 ## Read in, and merge Law Master files
@@ -61,18 +61,18 @@ Adjustments<-merge(LawExec,Adjustments,by=c("AltID"),all=TRUE)
 Adjustments$PO<-ifelse(!is.na(Adjustments$PO.x),as.character(Adjustments$PO.x,"%m/%d/%Y"),as.character(Adjustments$PO.y,"%m/%d/%Y"))
 Adjustments$BackFromVendor<-ifelse(!is.na(Adjustments$BackFromVendor.x),as.Date(Adjustments$BackFromVendor.x,"%m/%d/%Y"),as.Date(Adjustments$BackFromVendor.y,"%m/%d/%Y"));class(Adjustments$BackFromVendor)<-"Date"
 Adjustments$AdjustedSignDate<-ifelse(!is.na(Adjustments$AdjustedSignDate.x),as.Date(Adjustments$AdjustedSignDate.x,"%m/%d/%Y"),as.Date(Adjustments$AdjustedSignDate.y,"%m/%d/%Y"));class(Adjustments$AdjustedSignDate)<-"Date"
-Adjustments<-select(Adjustments,PO,AltID,OrdinanceDate,BackFromVendor,DownForSignature,AdjustedSignDate,CancelDate)
+Adjustments<-select(Adjustments,PO,AltID,Vendor,Dept,OrdinanceDate,BackFromVendor,DownForSignature,AdjustedSignDate,CancelDate)
 
 # Code blanks in ID columns to NA in Law Master list
-LawMaster$PO[LawMaster$PO==""]<-NA
-LawMaster$AltID[LawMaster$AltID==""]<-NA
+#LawMaster$PO[LawMaster$PO==""]<-NA
+#LawMaster$AltID[LawMaster$AltID==""]<-NA
 LawMaster$Govt[LawMaster$Govt==""]<-NA
 LawMaster$Type[LawMaster$Type==""]<-NA
 LawMaster$LawStatus[LawMaster$LawStatus==""]<-NA
 
 ##Code blanks in ID columns to NA in Law Master list
-Adjustments$PO[Adjustments$PO==""]<-NA
-Adjustments$AltID[Adjustments$AltID==""]<-NA
+#Adjustments$PO[Adjustments$PO==""]<-NA
+#Adjustments$AltID[Adjustments$AltID==""]<-NA
 
 ## Re-Code Order Sequence to appropriate appproval stage category
 contractPOapproval$Stage<-ifelse(contractPOapproval$Stage==1,"DepAttorney",ifelse(contractPOapproval$Stage==2,"CAO",ifelse(contractPOapproval$Stage==3,"SentVendor",ifelse(contractPOapproval$Stage==4,"ECMS_BackFromVendor",ifelse(contractPOapproval$Stage==5,"ExecutiveSignature","Error")))))
@@ -104,50 +104,60 @@ contracts<-merge(contractPOapproval,contractPOstatus,by="PO",all=TRUE)
       contracts$AltID<-ifelse(!is.na(contracts$AltID.x),as.character(contracts$AltID.x,"%m/%d/%Y"),as.character(contracts$AltID.y,"%m/%d/%Y"))   
       contracts$ContractDate<-ifelse(!is.na(contracts$ContractDate.x),as.Date(contracts$ContractDate.x,"%m/%d/%Y"),as.Date(contracts$ContractDate.y,"%m/%d/%Y"));class(contracts$ContractDate)<-"Date"  
           contracts<-select(contracts,-ContractDate.x,-ContractDate.y,-AltID.x,-AltID.y)
+                contracts$PO<-as.character(contracts$PO)
+                   # contracts$PO[is.na(contracts$PO)]<-""
+                   # contracts$AltID[is.na(contracts$AltID)]<-""
 contracts<-merge(contracts,contractReqstatus,by=c("Req"),all=TRUE)
-      contracts$Description<-ifelse(!is.na(contracts$Description.x),as.character(contracts$Description.x),as.character(contracts$Description.y))
-          contracts<-select(contracts,-Description.x,-Description.y)
+              contracts$Description<-ifelse(!is.na(contracts$Description.x),as.character(contracts$Description.x),as.character(contracts$Description.y))
+                  contracts<-select(contracts,-Description.x,-Description.y)
+                  #  contracts$PO[is.na(contracts$PO)]<-""
+                   # contracts$AltID[is.na(contracts$AltID)]<-""
 
 ## Merge consolidated list with Law master list
-Master1<-filter(LawMaster,!is.na(PO))
-      contracts<-merge(contracts,Master1,by="PO",all=TRUE)
+#Master1<-filter(LawMaster,!is.na(PO))
+      contracts<-merge(contracts,LawMaster,by="PO",all=TRUE)
             contracts$Dept<-ifelse(!is.na(contracts$Dept.x),as.character(contracts$Dept.x),as.character(contracts$Dept.y))
             contracts$Vendor<-ifelse(!is.na(contracts$Vendor.x),as.character(contracts$Vendor.x),as.character(contracts$Vendor.y))
             contracts$AltID<-ifelse(!is.na(contracts$AltID.x),as.character(contracts$AltID.x),as.character(contracts$AltID.y))
                 contracts<-select(contracts,-Dept.y,-Vendor.y,-Dept.x,-Vendor.x,-AltID.x,-AltID.y)
-Master2<-filter(LawMaster,!is.na(AltID) & is.na(PO))
-      contracts<-merge(contracts,Master2,by="AltID",all=TRUE)
-            contracts$PO<-ifelse(!is.na(contracts$PO.x),as.character(contracts$PO.x),as.character(contracts$PO.y))
-            contracts$Govt<-ifelse(!is.na(contracts$Govt.x),as.character(contracts$Govt.x),as.character(contracts$Govt.y))
-            contracts$Type<-ifelse(!is.na(contracts$Type.x),as.character(contracts$Type.x),as.character(contracts$Type.y))
-            contracts$LawStatus<-ifelse(!is.na(contracts$LawStatus.x),as.character(contracts$LawStatus.x),as.character(contracts$LawStatus.y))
-            contracts$Admin_ContractDate<-ifelse(!is.na(contracts$Admin_ContractDate.x),as.Date(contracts$Admin_ContractDate.x,"%m/%d/%Y"),as.Date(contracts$Admin_ContractDate.y,"%m/%d/%Y"));class(contracts$Admin_ContractDate)<-"Date"
-            contracts$LawStatus<-ifelse(!is.na(contracts$LawStatus.x),as.character(contracts$LawStatus.x),as.character(contracts$LawStatus.y)) 
-            contracts$Dept<-ifelse(!is.na(contracts$Dept.x),as.character(contracts$Dept.x),as.character(contracts$Dept.y))
-            contracts$Vendor<-ifelse(!is.na(contracts$Vendor.x),as.character(contracts$Vendor.x),as.character(contracts$Vendor.y))
-contracts<-select(contracts,-Govt.x,-Govt.y,-Type.x,-Type.y,-Admin_ContractDate.y,-Admin_ContractDate.x,-LawStatus.y,-LawStatus.x,-Dept.x,-Dept.y,-Vendor.y,-Vendor.x,-PO.x,-PO.y)
+#Master2<-filter(LawMaster,!is.na(AltID) & is.na(PO))
+     # contracts<-merge(contracts,Master2,by="AltID",all=TRUE)
+         #   contracts$PO<-ifelse(!is.na(contracts$PO.x),as.character(contracts$PO.x),as.character(contracts$PO.y))
+          # contracts$Govt<-ifelse(!is.na(contracts$Govt.x),as.character(contracts$Govt.x),as.character(contracts$Govt.y))
+         #   contracts$Type<-ifelse(!is.na(contracts$Type.x),as.character(contracts$Type.x),as.character(contracts$Type.y))
+          #  contracts$LawStatus<-ifelse(!is.na(contracts$LawStatus.x),as.character(contracts$LawStatus.x),as.character(contracts$LawStatus.y))
+           # contracts$Admin_ContractDate<-ifelse(!is.na(contracts$Admin_ContractDate.x),as.Date(contracts$Admin_ContractDate.x,"%m/%d/%Y"),as.Date(contracts$Admin_ContractDate.y,"%m/%d/%Y"));class(contracts$Admin_ContractDate)<-"Date"
+            #contracts$LawStatus<-ifelse(!is.na(contracts$LawStatus.x),as.character(contracts$LawStatus.x),as.character(contracts$LawStatus.y)) 
+        #    contracts$Dept<-ifelse(!is.na(contracts$Dept.x),as.character(contracts$Dept.x),as.character(contracts$Dept.y))
+         #   contracts$Vendor<-ifelse(!is.na(contracts$Vendor.x),as.character(contracts$Vendor.x),as.character(contracts$Vendor.y))
+#contracts<-select(contracts,-Govt.x,-Govt.y,-Type.x,-Type.y,-Admin_ContractDate.y,-Admin_ContractDate.x,-LawStatus.y,-LawStatus.x,-Dept.x,-Dept.y,-Vendor.y,-Vendor.x,-PO.x,-PO.y)
 
 ## Merge with adjustment dataset
-Adjust1<-filter(Adjustments,!is.na(PO))
-               contracts<-merge(contracts,Adjust1,by="PO",all=TRUE)
-              contracts$AltID<-ifelse(!is.na(contracts$AltID.x),as.character(contracts$AltID.x),as.character(contracts$AltID.y))
-                    contracts<-select(contracts,-AltID.x,-AltID.y)
-Adjust2<-filter(Adjustments,!is.na(AltID) & is.na(PO))
-      contracts<-merge(contracts,Adjust2,by="AltID",all=TRUE)
-          contracts$PO<-ifelse(!is.na(contracts$PO.x),as.character(contracts$PO.x),as.character(contracts$PO.y))          
+#contracts$PO[is.na(contracts$PO)]<-""
+contracts<-merge(contracts,Adjustments,by="PO",all=TRUE)
+#Adjust1<-filter(Adjustments,!is.na(PO))
+            #   contracts<-merge(contracts,Adjust1,by="PO",all=TRUE)
+                  contracts$AltID<-ifelse(!is.na(contracts$AltID.x),as.character(contracts$AltID.x),as.character(contracts$AltID.y))
+                  contracts$Vendor<-ifelse(!is.na(contracts$Vendor.x),as.character(contracts$Vendor.x),as.character(contracts$Vendor.y))
+                  contracts$Dept<-ifelse(!is.na(contracts$Dept.x),as.character(contracts$Dept.x),as.character(contracts$Dept.y))
+                      contracts<-select(contracts,-AltID.x,-AltID.y,-Vendor.x,-Vendor.y,-Dept.x,-Dept.y)
+#Adjust2<-filter(Adjustments,!is.na(AltID) & is.na(PO))
+     # contracts<-merge(contracts,Adjust2,by="AltID",all=TRUE)
+       #   contracts$PO<-ifelse(!is.na(contracts$PO.x),as.character(contracts$PO.x),as.character(contracts$PO.y))          
           #contracts$Closed<-ifelse(!is.na(contracts$Closed.x),as.character(contracts$Closed.x),as.character(contracts$Closed.y))
           #contracts$Ordinance<-ifelse(!is.na(contracts$Ordinance.x),as.character(contracts$Ordinance.x),as.character(contracts$Ordinance.y))
-          contracts$OrdinanceDate<-ifelse(!is.na(contracts$OrdinanceDate.x),as.Date(contracts$OrdinanceDate.x,"%m/$d/%Y"),as.Date(contracts$OrdinanceDate.y,"%m/$d/%Y"));class(contracts$OrdinanceDate)<-"Date"
-          contracts$BackFromVendor<-ifelse(!is.na(contracts$BackFromVendor.x),as.Date(contracts$BackFromVendor.x,"%m/$d/%Y"),as.Date(contracts$BackFromVendor.y,"%m/$d/%Y"));class(contracts$BackFromVendor)<-"Date"
-          contracts$DownForSignature<-ifelse(!is.na(contracts$DownForSignature.x),as.Date(contracts$DownForSignature.x,"%m/$d/%Y"),as.Date(contracts$DownForSignature.y,"%m/$d/%Y"));class(contracts$DownForSignature)<-"Date"
-          contracts$AdjustedSignDate<-ifelse(!is.na(contracts$AdjustedSignDate.x),as.Date(contracts$AdjustedSignDate.x,"%m/$d/%Y"),as.Date(contracts$AdjustedSignDate.y,"%m/$d/%Y"));class(contracts$AdjustedSignDate)<-"Date"
-          contracts$CancelDate<-ifelse(!is.na(contracts$CancelDate.x),as.Date(contracts$CancelDate.x,"%m/$d/%Y"),as.Date(contracts$CancelDate.y,"%m/$d/%Y"));class(contracts$CancelDate)<-"Date"
-contracts<-select(contracts,-OrdinanceDate.x,-OrdinanceDate.y,-BackFromVendor.x,-BackFromVendor.y,-DownForSignature.x,-DownForSignature.y,-AdjustedSignDate.x,-AdjustedSignDate.y,-CancelDate.x,-CancelDate.y,-PO.x,-PO.y)
+         # contracts$OrdinanceDate<-ifelse(!is.na(contracts$OrdinanceDate.x),as.Date(contracts$OrdinanceDate.x,"%m/$d/%Y"),as.Date(contracts$OrdinanceDate.y,"%m/$d/%Y"));class(contracts$OrdinanceDate)<-"Date"
+      #    contracts$BackFromVendor<-ifelse(!is.na(contracts$BackFromVendor.x),as.Date(contracts$BackFromVendor.x,"%m/$d/%Y"),as.Date(contracts$BackFromVendor.y,"%m/$d/%Y"));class(contracts$BackFromVendor)<-"Date"
+      #    contracts$DownForSignature<-ifelse(!is.na(contracts$DownForSignature.x),as.Date(contracts$DownForSignature.x,"%m/$d/%Y"),as.Date(contracts$DownForSignature.y,"%m/$d/%Y"));class(contracts$DownForSignature)<-"Date"
+       #   contracts$AdjustedSignDate<-ifelse(!is.na(contracts$AdjustedSignDate.x),as.Date(contracts$AdjustedSignDate.x,"%m/$d/%Y"),as.Date(contracts$AdjustedSignDate.y,"%m/$d/%Y"));class(contracts$AdjustedSignDate)<-"Date"
+       #   contracts$CancelDate<-ifelse(!is.na(contracts$CancelDate.x),as.Date(contracts$CancelDate.x,"%m/$d/%Y"),as.Date(contracts$CancelDate.y,"%m/$d/%Y"));class(contracts$CancelDate)<-"Date"
+#contracts<-select(contracts,-OrdinanceDate.x,-OrdinanceDate.y,-BackFromVendor.x,-BackFromVendor.y,-DownForSignature.x,-DownForSignature.y,-AdjustedSignDate.x,-AdjustedSignDate.y,-CancelDate.x,-CancelDate.y,-PO.x,-PO.y)
 
 ## Filter out contracts that haven't made it to Law yet
 contracts<-contracts[contracts$ReqStatus=="Gone to PO"|contracts$ReqStatus=="Ready for Purchasing"|is.na(contracts$ReqStatus),]
 
 ## Create date reconciliation columns
+contracts$ContractDate<-ifelse(is.na(contracts$ContractDate),as.Date(contracts$Admin_ContractDate,format="%m/%d/%Y"),as.Date(contracts$ContractDate,format="%m/%d/%Y")); class(contracts$ContractDate)<-"Date"
 contracts$CAO_Ord<-ifelse(is.na(contracts$OrdinanceDate),as.Date(contracts$CAO,format="%m/%d/%Y"),as.Date(contracts$OrdinanceDate,format="%m/%d/%Y")); class(contracts$CAO_Ord)<-"Date"
 contracts$VendorReconciled<-ifelse(is.na(contracts$BackFromVendor),as.Date(contracts$ECMS_BackFromVendor,format="%m/%d/%Y"),as.Date(contracts$BackFromVendor,format="%m/%d/%Y")); class(contracts$VendorReconciled)<-"Date"
 contracts$ReadyforExec<-ifelse(is.na(contracts$DownForSignature),as.Date(contracts$VendorReconciled,format="%m/%d/%Y"),as.Date(contracts$DownForSignature,format="%m/%d/%Y")); class(contracts$ReadyforExec)<-"Date"
@@ -155,7 +165,7 @@ contracts$SignDate<-ifelse(is.na(contracts$AdjustedSignDate),as.Date(contracts$E
 
 ## Select and arrange desired columns in dataset
 contracts<-select(contracts,PO,Req,AltID,Dept:Vendor,Description:LawStatus,POStatus,ReqStatus,Requestor:Purchaser,Error
-                  ,ReqComplete,Admin_ContractDate,ContractDate,LegalReview:CAO,OrdinanceDate,SentVendor,BackFromVendor,
+                  ,ReqComplete,ContractDate,LegalReview:CAO,OrdinanceDate,SentVendor,BackFromVendor,
                   ECMS_BackFromVendor,DownForSignature,AdjustedSignDate,ExecutiveSignature,CancelDate:SignDate)
 
 # Clean contract type language to prepare for re-coding
@@ -191,7 +201,9 @@ contracts$ExecutiveSignature_Days<-Days(contracts,ReadyforExec,SignDate)
                           contracts$ExecutiveSignature_Days<-ifelse(contracts$ExecutiveSignature_Days<0,0,contracts$ExecutiveSignature_Days)
 
 ## Remove contracts that have been orphaned by deficient historical data
-Exclude<-subset(subset(contracts,ReqStatus=="Gone to PO" & is.na(ContractDate) & is.na(Admin_ContractDate)))
+Exclude1<-subset(contracts,ReqStatus=="Gone to PO" & is.na(ContractDate) & is.na(Admin_ContractDate))
+Exclude2<-subset(contracts,ReqStatus=="" & is.na(ContractDate) & is.na(Admin_ContractDate))
+Exclude<-rbind(Exclude1,Exclude2)
 contracts<-anti_join(contracts,Exclude,by="Req") 
   
 ## Clean days in stage for manual contracts so there is only a "days to execute" calculation for those contracts
@@ -214,8 +226,8 @@ contracts$Last_Qtr<-ifelse(!is.na(contracts$Last_Qtr),contracts$Last_Qtr,
                                        ifelse(!is.na(contracts$Last_Qtr3),contracts$Last_Qtr3,
                                               ifelse(!is.na(contracts$Last_Qtr4),contracts$Last_Qtr4,NA))));class(contracts$Last_Qtr)<-"yearqtr"
 contracts$Last_Qtr<-ifelse(is.na(contracts$Last_Qtr) & contracts$POStatus=="Sent",as.yearqtr(contracts$ContractDate,format="%Y-%m-%d"),contracts$Last_Qtr);class(contracts$Last_Qtr)<-"yearqtr"
-
 contracts<-select(contracts,-Last_Qtr2,-Last_Qtr3,-Last_Qtr4)
+
 contracts$First_Qtr<-as.yearqtr(contracts$ReqComplete,format="%Y-%m-%d") ## Find quarter that a contract was created
 contracts$Qtr_Start<-as.Date(as.yearqtr(contracts$First_Qtr,format="%Y-%m-%d")) ##Find start date of quarter that a contract was created in ECMS.
 contracts$Qtr_End<-as.Date(as.yearqtr(contracts$Last_Qtr), frac = 1 )  ## Find end date of quarter that a contract was signed, if applicable
