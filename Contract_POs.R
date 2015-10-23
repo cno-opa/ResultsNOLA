@@ -269,25 +269,25 @@ Closedcontracts<-subset(contracts,!is.na(Last_Qtr))
 Opencontracts<-select(Opencontracts,-ends_with("Days"),-starts_with("Days"))
 
 ##Calculate total age, as well as days in each stage except for Exec Counsel for open contracts
-Opencontracts$AttorneyReview_Age<-ifelse(is.na(Opencontracts$LegalReview) & !is.na(Opencontracts$ContractDate),Age(Opencontracts,ContractDate,QtrEnd),NA)
-Opencontracts$DepAttorney_Age<-ifelse(is.na(Opencontracts$DepAttorney) & !is.na(Opencontracts$LegalReview),Age(Opencontracts,LegalReview,QtrEnd),NA)
-Opencontracts$CAO_Age<-ifelse(is.na(Opencontracts$CAO) & !is.na(Opencontracts$DepAttorney),Age(Opencontracts,DepAttorney,QtrEnd),NA)
+Opencontracts$AttorneyReview_Age<-ifelse(is.na(Opencontracts$LegalReview) & !is.na(Opencontracts$ContractDate),Days(Opencontracts,ContractDate,QtrEnd),NA)
+Opencontracts$DepAttorney_Age<-ifelse(is.na(Opencontracts$DepAttorney) & !is.na(Opencontracts$LegalReview),Days(Opencontracts,LegalReview,QtrEnd),NA)
+Opencontracts$CAO_Age<-ifelse(is.na(Opencontracts$CAO) & !is.na(Opencontracts$DepAttorney),Days(Opencontracts,DepAttorney,QtrEnd),NA)
 Opencontracts$OpenOrd<-ifelse(Opencontracts$Ordinance=="Yes","Yes",NA)
               Opencontracts$Ordinance_Age<-ifelse(!is.na(Opencontracts$OpenOrd) & is.na(Opencontracts$OrdinanceDate),strptime(QtrEnd,format="%Y-%m-%d")-strptime(Opencontracts$CAO,format="%Y-%m-%d"),NA)
-Opencontracts$SendVendor_Age<-ifelse(is.na(Opencontracts$SentVendor) & !is.na(Opencontracts$CAO_Ord) & is.na(Opencontracts$OpenOrd),Age(Opencontracts,CAO_Ord,QtrEnd),NA);Opencontracts<-select(Opencontracts,-OpenOrd)
-Opencontracts$AwaitingVendor_Age<-ifelse(is.na(Opencontracts$VendorReconciled) & !is.na(Opencontracts$SentVendor),Age(Opencontracts,SentVendor,QtrEnd),NA)
-Opencontracts$BringToExec_Age<-ifelse(is.na(Opencontracts$DownForSignature) & Opencontracts$VendorReconciled>as.Date("2014-12-31","%Y-%m-%d"),Age(Opencontracts,VendorReconciled,QtrEnd),NA)
+Opencontracts$SendVendor_Age<-ifelse(is.na(Opencontracts$SentVendor) & !is.na(Opencontracts$CAO_Ord) & is.na(Opencontracts$OpenOrd),Days(Opencontracts,CAO_Ord,QtrEnd),NA);Opencontracts<-select(Opencontracts,-OpenOrd)
+Opencontracts$AwaitingVendor_Age<-ifelse(is.na(Opencontracts$VendorReconciled) & !is.na(Opencontracts$SentVendor),Days(Opencontracts,SentVendor,QtrEnd),NA)
+Opencontracts$BringToExec_Age<-ifelse(is.na(Opencontracts$DownForSignature) & Opencontracts$VendorReconciled>as.Date("2014-12-31","%Y-%m-%d"),Days(Opencontracts,VendorReconciled,QtrEnd),NA)
 
 ## Determine which contracts are with Exec Counsel and calculate age
 #Opencontracts$AgeReconcile<-mutate(Opencontracts,AgeReconcile=AttorneyReview_Age+DepAttorney_Age+CAO_Age+Ordinance_Age+SendVendor_Age+AwaitingVendor_Age+BringToExec_Age)
 #Opencontracts$ExecutiveSignature_Age<-ifelse(is.na(Opencontracts$AgeReconcile),StageAge(Opencontracts,ReadyforExec,QtrEnd),NA)
 #Opencontracts$ExecutiveSignature_Age<-ifelse(is.na(Opencontracts$AttorneyReview_Age) & is.na(Opencontracts$DepAttorney_Age) & is.na(Opencontracts$CAO) & is.na(Opencontracts$Ordinance_Age) & is.na(Opencontracts$SendVendor_Age) & is.na(Opencontracts$AwaitingVendor_Age) & is.na(Opencontracts$BringToExec_Age), StageAge(Opencontracts, ReadyforExec, QtrEnd), NA)
 #Opencontracts<-select(Opencontracts,-AgeReconcile)
-Opencontracts$ExecutiveSignature_Age<-ifelse(is.na(Opencontracts$ExecutiveSignature),Age(Opencontracts,DownForSignature,QtrEnd))
+Opencontracts$ExecutiveSignature_Age<-ifelse(is.na(Opencontracts$ExecutiveSignature),Days(Opencontracts,DownForSignature,QtrEnd))
 
 ## Calculate average age of contracts in queue, from contract date to end of reporting period
 Qtr_End<-as.Date(max(contracts$Qtr_End),"%m/%d/%Y") ### Calculate last day or reporting period
-Opencontracts$TotalAge<-TotalAge(Opencontracts,ContractDate,QtrEnd)
+Opencontracts$TotalAge<-Age(Opencontracts,ContractDate,QtrEnd)
 
 ## Plot days in stage for executed contracts
 Stages<-subset(Closedcontracts,Last_Qtr>"2012 Q4")
@@ -310,7 +310,7 @@ Stage_plot<-Stage_plot+xlab("Quarters")
 Stage_plot<-Stage_plot+ylab("Days")
 Stage_plot<-Stage_plot+theme(strip.text.x=element_text(size=8),axis.text.x=element_blank())
 print(Stage_plot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Closed Contracts by Stage.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Closed Contracts by Stage.png")
 
 ## Plot Days to Execute
 Days2Execute<-ddply(subset(Closedcontracts,!is.na(Days_to_Execute)),"Last_Qtr",summarise,Sign=mean(Days_to_Execute))
@@ -323,7 +323,29 @@ Execution<-Execution+ylab("Days")
 Execution<-Execution+geom_text(aes(y=Sign,ymax=Sign+1,label=round(Sign,1)),position=position_dodge(width=0.9),vjust=-.5,size=5)
 Execution<-Execution+geom_hline(aes(yintercept=30),colour="#FF0000",linetype=2,size=1.2)+theme(legend.position="Top")
 print(Execution)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Days to Execute.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Days to Execute.png")
+
+## Create scatterplot of open contracts per attorney
+Attorneys1<-aggregate(AttorneyReview_Age ~ Purchaser,data = Opencontracts,length)
+Attorneys2<-aggregate(AttorneyReview_Age ~ Purchaser,data = Opencontracts,mean)
+Attorneys<-merge(Attorneys1,Attorneys2,by="Purchaser")
+    colnames(Attorneys)[colnames(Attorneys) == "AttorneyReview_Age.x"] <- "Count"
+    colnames(Attorneys)[colnames(Attorneys) == "AttorneyReview_Age.y"] <- "Age"
+        Attorneys$Attorneys<-ifelse(Attorneys$Purchaser=="CJPMEYER","Meyer",
+                                ifelse(Attorneys$Purchaser=="CSCWELLMAN","Wellman",
+                                       ifelse(Attorneys$Purchaser=="CTDOATES","Oates",
+                                          ifelse(Attorneys$Purchaser=="CAJBECNEL","Becnel",
+                                                 ifelse(Attorneys$Purchaser=="CASZELLER","Zeller",
+                                                        ifelse(Attorneys$Purchaser=="CCCDYER","Dyer",
+                                                               ifelse(Attorneys$Purchaser=="CMJMANZELLA","Manzella",
+                                                                      ifelse(Attorneys$Purchaser=="CTRACYT","Tyler",NA))))))))
+Attorney_plot<-ggplot(Attorneys,aes(x=Age,y=Count))+
+  geom_point(shape=1)+
+   ggtitle("Average Number of Contracts by Days Awaiting Attorney Review per Attorney")+
+    xlab("Days Awaiting Attorney Review")+ylab("Number of Contracts")+
+    geom_text(aes(label=Attorneys))
+print(Attorney_plot)
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Attorney Review.png")
 
 ## Plot days to execute broken down by process
 Execute_Type<-aggregate(Days_to_Execute~Last_Qtr+Type2,data=Closedcontracts,mean)
@@ -331,6 +353,7 @@ Execute_Type<-subset(Execute_Type,Last_Qtr>"2012 Q4")
 ExecuteType_Plot<-ggplot(Execute_Type,aes(x=factor(Last_Qtr),y=Days_to_Execute,group=Type2,color=factor(Type2)))
 ExecuteType_Plot<-ExecuteType_Plot+geom_line(stat="identity",size=1.25)
 print(ExecuteType_Plot)
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Execute Type.png")
 
 ## Write spreadsheets for relevant data frames
 write.csv(contracts,"O:/Projects/ReqtoCheckStat/Query Files/Output/Contracts.csv",na="")
