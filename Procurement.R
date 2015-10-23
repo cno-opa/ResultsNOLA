@@ -41,7 +41,7 @@ Purchasing<-Purchasing+ylab("Business Days")
 Purchasing<-Purchasing+geom_text(aes(y=WorkingDays,ymax=WorkingDays+1,label=round(WorkingDays,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)
 Purchasing<-Purchasing+geom_hline(aes(yintercept=4,colour="#FF0000"),linetype=2,size=1)
 print(Purchasing)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Days to PO.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Procurement/Days to PO.png")
 
 ## Plot the distribution percentages of business days to process by quarter
 POdist<-select(POs,Qtr,Under4,Over4)
@@ -62,7 +62,7 @@ Dist_plot<-ggplot(POdist,aes(x = factor(Qtr), y = value,fill = variable)) +
              geom_text(aes(ymax=value,y=position,label=percent(value)),size=4)+
                  scale_fill_manual(values=c(lightBlue,red),name=" ",labels=c("<=4 Business Days",">4 Business Days"))
 print(Dist_plot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/PO Distribution.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Procurement/PO Distribution.png")
 
 
 ## Plot business days to process by Buyer
@@ -78,7 +78,7 @@ Buyer_Plot<-ggplot(Buyers,aes(x=factor(Qtr),y=WorkingDays,group=Buyer2,color=fac
         ylab("Business Days")+xlab("Quarter")+
           geom_text(aes(label=ifelse(Qtr==r_period,WorkingDays,"")))
 print(Buyer_Plot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Buyer Plot.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Procurement/Buyer Plot.png")
 
 ## Export the data
 write.csv(POs,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Purchase Orders.csv")
