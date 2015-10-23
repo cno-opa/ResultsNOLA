@@ -37,16 +37,8 @@ ReqDays<-function(df,FirstDt,EndDt,digits=0){
   round(as.POSIXct(EndDt,"%m/%d/%Y %H:%M")-as.POSIXct(FirstDt,"%m/%d/%Y %H:%M"),digits)/86400
 }
 
-## Create function for days in current stage for open contracts at end of the reporting period, rounded to whole numbers
-Age<-function(df,PrevDt,QtrEnd){
-  arguments<-as.list(match.call())  
-  PrevDt<-eval(arguments$PrevDt,df)
-  as.Date(as.vector(QtrEnd),format="%Y-%m-%d")
-  round((strptime(QtrEnd,"%Y-%m-%d")-strptime(PrevDt,"%Y-%m-%d"))/86400,digits=0)
-}
-
 ## Create function for days since contract creation for open contracts at end of the reporting period, rounded to whole numbers
-TotalAge<-function(df,StartDt,QtrEnd){
+Age<-function(df,StartDt,QtrEnd){
   arguments<-as.list(match.call())  
   StartDt<-eval(arguments$StartDt,df)
   as.Date(as.vector(QtrEnd),format="%Y-%m-%d")
