@@ -64,4 +64,4 @@ source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/N
 source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Procurement.R")
 source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Bids_RFPs_DBEs.R")
 source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Contract_POs.R")
-source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Gen_Fund_Payments.R")
+source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Payments.R")
