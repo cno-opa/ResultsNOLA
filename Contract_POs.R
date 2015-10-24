@@ -245,7 +245,7 @@ Opencontracts$OpenOrd<-ifelse(Opencontracts$Ordinance=="Yes","Yes",NA)
               Opencontracts$Ordinance_Age<-ifelse(!is.na(Opencontracts$OpenOrd) & is.na(Opencontracts$OrdinanceDate),strptime(r_period,format="%Y-%m-%d")-strptime(Opencontracts$CAO,format="%Y-%m-%d"),NA)
 Opencontracts$SendVendor_Age<-ifelse(is.na(Opencontracts$SentVendor) & !is.na(Opencontracts$CAO_Ord) & is.na(Opencontracts$OpenOrd),Days(Opencontracts,CAO_Ord,r_period),NA);Opencontracts<-select(Opencontracts,-OpenOrd)
 Opencontracts$AwaitingVendor_Age<-ifelse(is.na(Opencontracts$BackFromVendor) & !is.na(Opencontracts$SentVendor),Days(Opencontracts,SentVendor,r_period),NA)
-Opencontracts$BringToExec_Age<-ifelse(is.na(Opencontracts$DownForSignature) & Opencontracts$VendorReconciled>as.Date("2014-12-31","%Y-%m-%d"),Days(Opencontracts,VendorReconciled,r_period),NA)
+Opencontracts$BringToExec_Age<-ifelse(is.na(Opencontracts$DownForSignature) & Opencontracts$BackFromVendor>as.Date("2014-12-31","%Y-%m-%d"),Days(Opencontracts,VendorReconciled,r_period),NA)
 
 ## Determine which contracts are with Exec Counsel and calculate age
 Opencontracts$ExecutiveSignature_Age<-ifelse(is.na(Opencontracts$ExecutiveSignature),Days(Opencontracts,DownForSignature,r_period),NA)
@@ -364,6 +364,8 @@ ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Execute Type.png")
 
 ## Create Law KPI calculation, table and chart
 Closedcontracts$KPI_LawDays<-Days(Closedcontracts,ContractDate,DepAttorney)
+LawKPI<-select(Closedcontracts,Last_Qtr,KPI_LawDays)
+
 
 ## Write spreadsheets for relevant data frames
 write.csv(contracts,"O:/Projects/ReqtoCheckStat/Query Files/Output/Contracts.csv",na="")
