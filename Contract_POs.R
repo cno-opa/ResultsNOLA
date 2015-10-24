@@ -365,6 +365,9 @@ ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Execute Type.png")
 ## Create Law KPI calculation, table and chart
 Closedcontracts$KPI_LawDays<-Days(Closedcontracts,ContractDate,DepAttorney)
 LawKPI<-select(Closedcontracts,Last_Qtr,KPI_LawDays)
+LawKPI$Under30<-ifelse(LawKPI$KPI_LawDays<=30,1,0)
+LawKPI$Over30<-ifelse(LawKPI$KPI_LawDays>30,0,1)
+LawKPI<-aggregate(
 
 
 ## Write spreadsheets for relevant data frames
