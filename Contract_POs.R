@@ -364,10 +364,28 @@ ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Execute Type.png")
 
 ## Create Law KPI calculation, table and chart
 Closedcontracts$KPI_LawDays<-Days(Closedcontracts,ContractDate,DepAttorney)
-LawKPI<-select(Closedcontracts,Last_Qtr,KPI_LawDays)
-LawKPI$Under30<-ifelse(LawKPI$KPI_LawDays<=30,1,0)
-LawKPI$Over30<-ifelse(LawKPI$KPI_LawDays>30,0,1)
-LawKPI<-aggregate(
+Closedcontracts$LawUnder30<-ifelse(Closedcontracts$KPI_LawDays<=30,1,0)
+Closedcontracts$LawOver30<-ifelse(Closedcontracts$KPI_LawDays>30,0,1)
+LawKPI<-select(Closedcontracts,Last_Qtr,LawUnder30,LawOver30)
+LawKPI<-aggregate(cbind(LawKPI$LawUnder30,LawKPI$Over30)~Last_Qtr,data=LawKPI,FUN=sum);colnames(LawKPI)[grepl("V1", colnames(LawKPI))] <- "Under30";colnames(LawKPI)[grepl("V2", colnames(LawKPI))] <- "Over30"
+LawKPI<-subset(LawKPI,Last_Qtr>"2012 Q4")
+  LawKPI$Total<-LawKPI $Under30+LawKPI$Over30
+      LawKPI$Under_30<-round(LawKPI$Under30/LawKPI$Total,3)
+          LawKPI$Over_30<-round(POdist$Over4/POdist$Total,3)
+  LawKPI_dist<-select(LawKPI,Last_Qtr,Under_30,Over_30)   
+    undermaxLawKPI<-max(LawKPI_dist$Under30)
+LawKPI_dist<-melt(LawKPI_dist,id.vars="Last_Qtr")
+LawKPI_dist$position<-ifelse(LawKPI_dist$variable=="Under_30",undermaxLawKPI-.10,1-((1-undermaxLawKPI)/2)) # calculate height of data labels
+LawKPI_dist_plot<-ggplot(LawKPI_dist,aes(x = factor(Last_Qtr), y = value,fill = variable)) + 
+  geom_bar(position = "stack",stat = "identity") + 
+    scale_y_continuous(labels = percent_format())+
+       ggtitle("Distribution of Days to Draft, Review, and Approve by Law Dept")+
+          xlab("Quarters")+ylab("Percent")+
+             geom_text(aes(ymax=value,y=position,label=percent(value)),size=4)+
+                 scale_fill_manual(values=c(lightBlue,red),name=" ",labels=c("<=30 Days",">30 Days"))
+print(LawKPI_dist_plot)
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Procurement/Law Distribution.png")
+
 
 
 ## Write spreadsheets for relevant data frames
