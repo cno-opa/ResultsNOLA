@@ -1,7 +1,7 @@
 This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT analyses. ReqtoCheckSTAT reviews City of New Orleans performance data related to contracting out goods and services, from the requisition of budgeted funds to the issuance of a check for goods or services rendered. 
 
 
-### Status of ReqtoCheck scripted sections (as of 10/3).
+### Status of ReqtoCheck scripted sections (as of 10/27).
 * ITI - N/A
 
 * Requisitions - Need to figure out how to isolate max dept approval.
@@ -12,9 +12,9 @@ This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT 
 
 * Contract reqs - Not started.  Will begin after requisitions are complete.
 
-* Contract purchase orders - Mostly complete, with aging charts needed. Also need to optimize cleaning.
+* Contract purchase orders - Mostly complete, with aging charts needed.
 
-* Payments - Great Plains complete except for dept coding anddepartment-level table/chart, AFIN charts in progress
+* Payments - Mostly complete except for dept coding and department-level tables/charts, 
 
 * Invoice Pipelines - Not started
 
