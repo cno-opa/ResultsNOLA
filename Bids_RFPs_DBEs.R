@@ -7,7 +7,8 @@ DBE<-read.csv("O:/Projects/ReqtoCheckStat/Query Files/DBE.csv")
 Bids_RFPs<-read.csv("O:/Projects/ReqtoCheckStat/Query Files/Closed Bids-RFPs.csv")
 
 ### Create quarter variable
-Bids_RFPs$Qtr<-as.yearqtr(Bids_RFPs$Month,"%m/%d/%Y")
+Bids_RFPs$Last_Qtr<-as.yearqtr(Bids_RFPs$EndMonth,"%m/%d/%Y")
+Bids_RFPs$First_Qtr<-as.yearqtr(Bids_RFPs$FirstMonth,"%m/%d/%Y")
 
 ### Create distribution bins of bids and proposals
 Bids_RFPs$BidUnder3<-ifelse(Bids_RFPs$Type=="Bid" & Bids_RFPs$Responses<=3,1,0)
@@ -30,7 +31,7 @@ Bidresponse_plot<-Bidresponse_plot+ylab("Number of Bids")
 Bidresponse_plot<-Bidresponse_plot+geom_text(aes(y=Responses,ymax=Responses+1,label=round(Responses,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)
 Bidresponse_plot<-Bidresponse_plot+geom_hline(aes(yintercept=3,colour="#FF0000"),linetype=2,size=1)
 print(Bidresponse_plot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Responses per Bid.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Bids_RFPs_DBEs/Responses per Bid.png")
 
 ### Plot the average proposals per quarter
 RFPresponse<-subset(Bids_RFPs,Type=="RFP/Q")
@@ -43,7 +44,7 @@ RFPresponse_plot<-RFPresponse_plot+ylab("Number of Proposals")
 RFPresponse_plot<-RFPresponse_plot+geom_text(aes(y=Responses,ymax=Responses+1,label=round(Responses,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)
 RFPresponse_plot<-RFPresponse_plot+geom_hline(aes(yintercept=3,colour="#FF0000"),linetype=2,size=1)
 print(RFPresponse_plot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Proposals per RFP.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Bids_RFPs_DBEs/Proposals per RFP.png")
 
 ################
 ## Subset and aggregate for bids, to prepare to plot distribution
@@ -79,7 +80,7 @@ Bid_dist_plot<-ggplot(Bid_dist,aes(x = factor(Qtr), y = value,fill = variable)) 
   geom_text(aes(ymax=value,y=position,label=percent(value)),size=4)+
   scale_fill_manual(values=c(red,darkBlue,lightBlue,"green"),name=" ",labels=c("<=3 Bids","4-6 Bids","7-9 Bids","<=10 Bids"))
 print(Bid_dist_plot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Bid Distribution.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Bids_RFPs_DBEs/Bid Distribution.png")
 
 #############
 ## Subset and aggregate for bids, to prepare to plot distribution
@@ -115,12 +116,12 @@ RFP_dist_plot<-ggplot(RFP_dist,aes(x = factor(Qtr), y = value,fill = variable)) 
   geom_text(aes(ymax=value,y=position,label=percent(value)),size=4)+
   scale_fill_manual(values=c(red,darkBlue,lightBlue,"green"),name=" ",labels=c("<=3 Proposals","4-6 Proposals","7-9 Proposals","<=10 Proposals"))
 print(RFP_dist_plot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/RFP Distribution.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Bids_RFPs_DBEs/RFP Distribution.png")
 
 ## Create plot of the bids opened, closed, and open at the end of each quarter
 Bid_Flow<-subset(Bids_RFPs,Type=="Bid")
 Bid_First_summary<-ddply(Bid_Flow,"First_Qtr",summarise,n=n())
-Bid_End_summary<-ddply(contracts,"Last_Qtr",summarise,n=n())
+Bid_End_summary<-ddply(Bid_Flow,"Last_Qtr",summarise,n=n())
 Bid_First_summary<-rename(Bid_First_summary,Qtr=First_Qtr,Opened=n)
 Bid_End_summary<-rename(Bid_End_summary,Qtr=Last_Qtr,Closed=n)
 summaryBid_merge<-merge(Bid_First_summary,Qtr_End_summary,by="Qtr",all=TRUE)
@@ -140,8 +141,8 @@ ggsave("./ReqtoCheckSTAT/Query Files/Slides/Bids_RFPs_DBEs/Opened_Closed_In Queu
 
 ## Create plot of the RFPs opened, closed, and open at the end of each quarter
 RFP_Flow<-subset(Bids_RFPs,Type=="RFP/Q")
-RFP_First_summary<-ddply(Bid_Flow,"First_Qtr",summarise,n=n())
-RFP_End_summary<-ddply(contracts,"Last_Qtr",summarise,n=n())
+RFP_First_summary<-ddply(RFP_Flow,"First_Qtr",summarise,n=n())
+RFP_End_summary<-ddply(RFP_Flow,"Last_Qtr",summarise,n=n())
 RFP_First_summary<-rename(RFP_First_summary,Qtr=First_Qtr,Opened=n)
 RFP_End_summary<-rename(Bid_End_summary,Qtr=Last_Qtr,Closed=n)
 summaryRFP_merge<-merge(RFP_First_summary,Qtr_End_summary,by="Qtr",all=TRUE)
