@@ -77,18 +77,16 @@ GP$TotalUnder30<-ifelse(GP$TotalDays<=30,1,0)
 AFIN$APUnder7<-ifelse(AFIN$AP<=7,1,0)
     AFIN$AP7_14<-ifelse(AFIN$AP>7 & AFIN$AP<=14,1,0)
         AFIN$APOver14<-ifelse(AFIN$AP>14,1,0)
-AFIN$TotalUnder30<-ifelse(AFIN$TotalDays<=30,1,0)
-    AFIN$Total31_60<-ifelse(AFIN$TotalDays>30 & AFIN$TotalDays<=60,1,0)
-        AFIN$Total61_90<-ifelse(AFIN$TotalDays>60 & AFIN$TotalDays<=90,1,0)    
-            AFIN$Total91_120<-ifelse(AFIN$TotalDays>90 & AFIN$TotalDays<=120,1,0)
-                AFIN$TotalOver120<-ifelse(AFIN$TotalDays>120,1,0)
+AFIN$TotalUnder45<-ifelse(AFIN$TotalDays<=45,1,0)
+    AFIN$Total46_90<-ifelse(AFIN$TotalDays>45 & AFIN$TotalDays<=90,1,0)
+        AFIN$TotalOver90<-ifelse(AFIN$TotalDays>90,1,0)
 
 
 ## Plot business days to process by Accounts Payable
 GF_AP_Days<-aggregate(data=GP,AP~Qtr,FUN=mean)
 GF_AP_Dayplot<-ggplot(GF_AP_Days,aes(x=factor(Qtr),y=AP))
 GF_AP_Dayplot<-GF_AP_Dayplot+geom_bar(stat="identity",fill="steelblue")
-GF_AP_Dayplot<-GF_AP_Dayplot+ggtitle("Average Business Days to Process Payments by Accounts Payable")
+GF_AP_Dayplot<-GF_AP_Dayplot+ggtitle("Business Days to Process General Fund Payments by Accounts Payable")
 GF_AP_Dayplot<-GF_AP_Dayplot+xlab("Quarters")
 GF_AP_Dayplot<-GF_AP_Dayplot+ylab("Business Days")
 GF_AP_Dayplot<-GF_AP_Dayplot+geom_text(aes(y=AP,ymax=AP+1,label=round(AP,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)
@@ -100,7 +98,7 @@ ggsave("./ReqtoCheckSTAT/Query Files/Slides/Payments/General Fund AP Days.png")
 CG_AP_Days<-aggregate(data=AFIN,AP~Qtr,FUN=mean)
 CG_AP_Dayplot<-ggplot(CG_AP_Days,aes(x=factor(Qtr),y=AP))
 CG_AP_Dayplot<-CG_AP_Dayplot+geom_bar(stat="identity",fill="steelblue")
-CG_AP_Dayplot<-CG_AP_Dayplot+ggtitle("Average Business Days to Process Payments by Accounts Payable")
+CG_AP_Dayplot<-CG_AP_Dayplot+ggtitle("Business Days to Process Capital/Grant Payments by Accounts Payable")
 CG_AP_Dayplot<-CG_AP_Dayplot+xlab("Quarters")
 CG_AP_Dayplot<-CG_AP_Dayplot+ylab("Business Days")
 CG_AP_Dayplot<-CG_AP_Dayplot+geom_text(aes(y=AP,ymax=AP+1,label=round(AP,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)
@@ -108,7 +106,7 @@ CG_AP_Dayplot<-CG_AP_Dayplot+geom_hline(aes(yintercept=7,colour="#FF0000"),linet
 print(CG_AP_Dayplot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Payments/Capital-Grant AP Days.png")
 
-## Plot the distribution percentages of business days to process by quarter
+## Plot the distribution percentages of business days to process general fund payments by quarter
 GF_APdist<-select(GP,Qtr,APUnder7,AP7_14,APOver14)
 GF_APdist<-aggregate(cbind(GF_APdist$APUnder7,GF_APdist$AP7_14,GF_APdist$APOver14)~Qtr,data=GF_APdist,FUN=sum);colnames(GF_APdist)[grepl("V1", colnames(GF_APdist))] <- "Under7";colnames(GF_APdist)[grepl("V2", colnames(GF_APdist))] <- "Between7_14";colnames(GF_APdist)[grepl("V3", colnames(GF_APdist))] <- "Over14"
 #POdist<-subset(POdist,Qtr>"2012 Q4")
@@ -118,14 +116,14 @@ GF_APdist$Between7_14<-round(GF_APdist$Between7_14/GF_APdist$Total,3)
 GF_APdist$Over14<-round(GF_APdist$Over14/GF_APdist$Total,3)
 GF_APdist<-select(GF_APdist,Qtr,Under7,Between7_14,Over14)
 GF_APdist<-melt(GF_APdist,id.vars="Qtr")
-GF_APdist$position<-ifelse(GF_APdist$variable=="Under7",.6,
-                        ifelse(GF_APdist$variable=="Between7_14",.8,.97)) ## Manually set height of data labels to appear at 95% and 75% on y axis
+#GF_APdist$position<-ifelse(GF_APdist$variable=="Under7",.35,
+      #                  ifelse(GF_APdist$variable=="Between7_14",.65,.99)) ## Manually set height of data labels to appear at 95% and 75% on y axis
 GF_APdist_plot<-ggplot(GF_APdist,aes(x = factor(Qtr), y = value,fill = variable)) + 
   geom_bar(position = "stack",stat = "identity") + 
   scale_y_continuous(labels = percent_format())+
   ggtitle("Distribution of Business Days to Process Payments by Accounts Payable")+
   xlab("Quarters")+ylab("Percent")+
-  geom_text(aes(ymax=value,y=position,label=percent(value)),size=3.5)+
+ # geom_text(aes(ymax=value,y=position,label=percent(value)),size=3.5)+
   scale_fill_manual(values=c(darkBlue,lightBlue,red),name=" ",labels=c("<=7 Business Days","7-14 Business Days",">14 Business Days"))
 print(GF_APdist_plot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Payments/General Fund AP Distribution.png")
@@ -135,11 +133,11 @@ ggsave("./ReqtoCheckSTAT/Query Files/Slides/Payments/General Fund AP Distributio
 GF_Check_Days<-aggregate(data=GP,TotalDays~Qtr,FUN=mean)
 GF_Check_Dayplot<-ggplot(GF_Check_Days,aes(x=factor(Qtr),y=TotalDays))
 GF_Check_Dayplot<-GF_Check_Dayplot+geom_bar(stat="identity",fill="steelblue")
-GF_Check_Dayplot<-GF_Check_Dayplot+ggtitle("Average Days from Invoice to GF_Check")
+GF_Check_Dayplot<-GF_Check_Dayplot+ggtitle("Days from Invoice to Check - General Fund")
 GF_Check_Dayplot<-GF_Check_Dayplot+xlab("Quarters")
 GF_Check_Dayplot<-GF_Check_Dayplot+ylab("Days")
 GF_Check_Dayplot<-GF_Check_Dayplot+geom_text(aes(y=TotalDays,ymax=TotalDays+1,label=round(TotalDays,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)
-GF_Check_Dayplot<-GF_Check_Dayplot+geom_hline(aes(yintercept=45,colour="#FF0000"),linetype=2,size=1)
+GF_Check_Dayplot<-GF_Check_Dayplot+geom_hline(aes(yintercept=30,colour="#FF0000"),linetype=2,size=1)
 print(GF_Check_Dayplot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Payments/GP Invoice to Check Days.png")
 
@@ -147,7 +145,7 @@ ggsave("./ReqtoCheckSTAT/Query Files/Slides/Payments/GP Invoice to Check Days.pn
 CG_Check<-aggregate(data=AFIN,TotalDays~Qtr,FUN=mean)
 CG_Checkplot<-ggplot(CG_Check,aes(x=factor(Qtr),y=TotalDays))
 CG_Checkplot<-CG_Checkplot+geom_bar(stat="identity",fill="steelblue")
-CG_Checkplot<-CG_Checkplot+ggtitle("Average Days from Invoice to Check - Capital/Grant Payments")
+CG_Checkplot<-CG_Checkplot+ggtitle("Days from Invoice to Check - Capital/Grant")
 CG_Checkplot<-CG_Checkplot+xlab("Quarters")
 CG_Checkplot<-CG_Checkplot+ylab("Days")
 CG_Checkplot<-CG_Checkplot+geom_text(aes(y=TotalDays,ymax=TotalDays+1,label=round(TotalDays,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)
@@ -203,6 +201,75 @@ GF_dist_plot<-ggplot(GF_dist,aes(x = factor(Qtr), y = value,fill = variable)) +
 print(GF_dist_plot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Payments/General Fund Payment Distribution.png")
 
+## Plot the distribution percentages of days from invoice to check
+CG_dist<-select(AFIN,Qtr,TotalUnder45,Total46_90,TotalOver90)
+CG_dist<-aggregate(cbind(CG_dist$TotalUnder45,CG_dist$Total45_90,CG_dist$TotalOver90)~Qtr,data=CG_dist,FUN=sum)
+colnames(CG_dist)[grepl("V1", colnames(CG_dist))] <- "TotalUnder30"
+colnames(CG_dist)[grepl("V2", colnames(CG_dist))] <- "Total31_60"
+colnames(CG_dist)[grepl("V5", colnames(CG_dist))] <- "TotalOver90"
+#CG_dist<-subset(CG_dist,Qtr>"2012 Q4")
+CG_dist$Total<-CG_dist$TotalUnder30+CG_dist$Total31_60+CG_dist$Total61_90+CG_dist$Total91_120+CG_dist$TotalOver120
+CG_dist$TotalUnder30<-round(CG_dist$TotalUnder30/CG_dist$Total,3)
+CG_dist$Total31_60<-round(CG_dist$Total31_60/CG_dist$Total,3)
+CG_dist$Total61_90<-round(CG_dist$Total61_90/CG_dist$Total,3)
+CG_dist$Total91_120<-round(CG_dist$Total91_120/CG_dist$Total,3)
+CG_dist$TotalOver120<-round(CG_dist$TotalOver120/CG_dist$Total,3)
+CG_dist<-select(CG_dist,Qtr,TotalUnder30,Total31_60,Total61_90,Total91_120,TotalOver120)
+
+##Define data label positions for distribution
+undermaxcheck<-max(GF_dist$TotalUnder30); 
+min31_60<-min(GF_dist$Total31_60)+undermaxcheck;
+min61_90<-min(GF_dist$Total61_90)+min31_60;
+min91_120<-min(GF_dist$Total91_120)+min61_90;
+overmin<-min(GF_dist$TotalOver120)+min91_120## Plot the distribution percentages of days from invoice to check
+GF_dist<-select(GP,Qtr,TotalUnder30,Total31_60,Total61_90,Total91_120,TotalOver120)
+GF_dist<-aggregate(cbind(GF_dist$TotalUnder30,GF_dist$Total31_60,GF_dist$Total61_90,GF_dist$Total91_120,GF_dist$TotalOver120)~Qtr,data=GF_dist,FUN=sum)
+colnames(GF_dist)[grepl("V1", colnames(GF_dist))] <- "TotalUnder30"
+colnames(GF_dist)[grepl("V2", colnames(GF_dist))] <- "Total31_60"
+colnames(GF_dist)[grepl("V3", colnames(GF_dist))] <- "Total61_90"
+colnames(GF_dist)[grepl("V4", colnames(GF_dist))] <- "Total91_120"
+colnames(GF_dist)[grepl("V5", colnames(GF_dist))] <- "TotalOver120"
+#GF_dist<-subset(GF_dist,Qtr>"2012 Q4")
+GF_dist$Total<-GF_dist$TotalUnder30+GF_dist$Total31_60+GF_dist$Total61_90+GF_dist$Total91_120+GF_dist$TotalOver120
+GF_dist$TotalUnder30<-round(GF_dist$TotalUnder30/GF_dist$Total,3)
+GF_dist$Total31_60<-round(GF_dist$Total31_60/GF_dist$Total,3)
+GF_dist$Total61_90<-round(GF_dist$Total61_90/GF_dist$Total,3)
+GF_dist$Total91_120<-round(GF_dist$Total91_120/GF_dist$Total,3)
+GF_dist$TotalOver120<-round(GF_dist$TotalOver120/GF_dist$Total,3)
+GF_dist<-select(GF_dist,Qtr,TotalUnder30,Total31_60,Total61_90,Total91_120,TotalOver120)
+
+##Define data label positions for distribution
+undermaxcheck<-max(GF_dist$TotalUnder30); 
+min31_60<-min(GF_dist$Total31_60)+undermaxcheck;
+min61_90<-min(GF_dist$Total61_90)+min31_60;
+min91_120<-min(GF_dist$Total91_120)+min61_90;
+overmin<-min(GF_dist$TotalOver120)+min91_120
+
+##Melt function to swing distribution categories and values into two respective columns
+GF_dist<-melt(GF_dist,id.vars="Qtr")
+
+GF_dist$position<-ifelse(GF_dist$variable=="TotalUnder30",GF_dist$value-.05,
+                         ifelse(GF_dist$variable=="Total31_60",sum(undermaxcheck, min31_60)/2,
+                                ifelse(GF_dist$variable=="Total61_90",sum(min31_60,min61_90)/2,
+                                       ifelse(GF_dist$variable=="Total91_120",sum(min61_90,min91_120)/2,sum(min91_120,overmin)/2)))) ## Set height of data labels to appear at 95% and 75% on y axis
+
+
+GF_dist$position<-ifelse(GF_dist$variable=="TotalUnder30",GF_dist$value-.02,
+                         ifelse(GF_dist$variable=="Total31_60",min31_60-.02,
+                                ifelse(GF_dist$variable=="Total61_90",min61_90-.02,
+                                       ifelse(GF_dist$variable=="Total91_120",min91_120-.02,overmin-.02)))) ## Set height of data labels to appear at 95% and 75% on y axis
+
+GF_dist_plot<-ggplot(GF_dist,aes(x = factor(Qtr), y = value,fill = variable)) + 
+  geom_bar(position = "stack",stat = "identity") + 
+  scale_y_continuous(labels = percent_format())+
+  ggtitle("Distribution of Days from Invoice to Check")+
+  xlab("Quarters")+ylab("Percent")+
+  geom_text(aes(ymax=value,y=position,label=percent(value)),size=4)+
+  scale_fill_manual(values=c("339900","green",lightBlue,darkBlue,red) ,name=" ",labels=c("<=4 Business Days",">4 Business Days"))
+print(CG_dist_plot)
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Payments/Capital-Grant Payment Distribution.png")
+
+
 ## Export cleaned data set
-write.csv(GP,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Great Plains.csv")
-write.csv(AFIN,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/AFIN.csv")
+write.csv(GP,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Payments/Great Plains.csv")
+write.csv(AFIN,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Payments/AFIN.csv")
