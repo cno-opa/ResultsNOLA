@@ -224,7 +224,7 @@ Open_closedplot<-ggplot(summary_melt,aes(x=factor(Qtr),y=value,fill=variable))+
   geom_line(subset=.(variable=="Open_EndofQtr"),aes(fill=variable,group=variable),size=1)+
   geom_text(aes(y=value,ymax=value,label=value),position=position_dodge(width=0.7),size=4)
 print(Open_closedplot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Opened_Closed_In Queue_Contracts.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Opened_Closed_In Queue_Contracts.png")
 
 ## Subset contract list into separate lists of contracts that have been closed and those currently open
 Opencontracts<-subset(contracts,is.na(Last_Qtr))
@@ -243,8 +243,8 @@ Opencontracts$DepAttorney_Age<-ifelse(is.na(Opencontracts$DepAttorney) & !is.na(
 Opencontracts$CAO_Age<-ifelse(is.na(Opencontracts$CAO) & !is.na(Opencontracts$DepAttorney),Days(Opencontracts,DepAttorney,r_period),NA)
 Opencontracts$OpenOrd<-ifelse(Opencontracts$Ordinance=="Yes","Yes",NA)
               Opencontracts$Ordinance_Age<-ifelse(!is.na(Opencontracts$OpenOrd) & is.na(Opencontracts$OrdinanceDate),strptime(r_period,format="%Y-%m-%d")-strptime(Opencontracts$CAO,format="%Y-%m-%d"),NA)
-Opencontracts$SendVendor_Age<-ifelse(is.na(Opencontracts$SentVendor) & !is.na(Opencontracts$CAO_Ord) & is.na(Opencontracts$OpenOrd),Days(Opencontracts,CAO_Ord,r_period),NA);Opencontracts<-select(Opencontracts,-OpenOrd)
-Opencontracts$AwaitingVendor_Age<-ifelse(is.na(Opencontracts$BackFromVendor) & !is.na(Opencontracts$SentVendor),Days(Opencontracts,SentVendor,r_period),NA)
+Opencontracts$SendVendor_Age<-ifelse(is.na(Opencontracts$SentVendor) & !is.na(Opencontracts$CAO_Ord) & is.na(Opencontracts$OpenOrd),strptime(r_period,format="%Y-%m-%d")-strptime(Opencontracts$CAO_Ord,format="%Y-%m-%d"),NA);Opencontracts<-select(Opencontracts,-OpenOrd)
+Opencontracts$AwaitingVendor_Age<-ifelse(is.na(Opencontracts$BackFromVendor) & !is.na(Opencontracts$SentVendor),strptime(r_period,format="%Y-%m-%d")-strptime(Opencontracts$SentVendor,format="%Y-%m-%d"),NA)
 Opencontracts$BringToExec_Age<-ifelse(is.na(Opencontracts$DownForSignature) & Opencontracts$BackFromVendor>as.Date("2014-12-31","%Y-%m-%d"),Days(Opencontracts,VendorReconciled,r_period),NA)
 
 ## Determine which contracts are with Exec Counsel and calculate age
@@ -265,7 +265,7 @@ levels(Stages$Stage)[levels(Stages$Stage)=="DownForSignature_Days"]<-"Down to Ex
 levels(Stages$Stage)[levels(Stages$Stage)=="ExecutiveSignature_Days"]<-"Executed"
 Stage_plot<-ggplot(Stages,aes(x=factor(Last_Qtr),y=Days_in_Stage,group=1))
 Stage_plot<-Stage_plot+geom_bar(stat="identity",fill=darkBlue,size=0.6)
-Stage_plot<-Stage_plot+facet_grid(facets=.~Stage))
+Stage_plot<-Stage_plot+facet_grid(facets=.~Stage)
 Stage_plot<-Stage_plot+ggtitle("Average Days per Stage for Executed Contracts 2013-Present")
 Stage_plot<-Stage_plot+xlab("Quarters")
 Stage_plot<-Stage_plot+ylab("Days")
@@ -286,7 +286,7 @@ Execution<-Execution+geom_hline(aes(yintercept=30),colour="#FF0000",linetype=2,s
 print(Execution)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Days to Execute.png")
 
-## Create distribution bins for business days to process
+## Create distribution bins for days to execute
 Closedcontracts$Under30<-ifelse(Closedcontracts$Days_to_Execute<=30,1,0)
 Closedcontracts$Between31_60<-ifelse(Closedcontracts$Days_to_Execute>30 & Closedcontracts$Days_to_Execute<=60,1,0)
 Closedcontracts$Between61_90<-ifelse(Closedcontracts$Days_to_Execute>60 & Closedcontracts$Days_to_Execute<=90,1,0)
@@ -318,39 +318,38 @@ print(Contract_PO_Dist_plot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Contract PO Distribution.png")
 
 ## Create scatterplot of open contracts per attorney
-Attorneys1<-aggregate(AttorneyReview_Age ~ Purchaser,data = Opencontracts,length)
-Attorneys2<-aggregate(AttorneyReview_Age ~ Purchaser,data = Opencontracts,mean)
-Attorneys<-merge(Attorneys1,Attorneys2,by="Purchaser")
-    colnames(Attorneys)[colnames(Attorneys) == "AttorneyReview_Age.x"] <- "Count"
-    colnames(Attorneys)[colnames(Attorneys) == "AttorneyReview_Age.y"] <- "Age"
-        Attorneys$Attorneys<-ifelse(Attorneys$Purchaser=="CJPMEYER","Meyer",
-                                ifelse(Attorneys$Purchaser=="CSCWELLMAN","Wellman",
-                                       ifelse(Attorneys$Purchaser=="CTDOATES","Oates",
-                                          ifelse(Attorneys$Purchaser=="CAJBECNEL","Becnel",
-                                                 ifelse(Attorneys$Purchaser=="CASZELLER","Zeller",
-                                                        ifelse(Attorneys$Purchaser=="CCCDYER","Dyer",
-                                                               ifelse(Attorneys$Purchaser=="CMJMANZELLA","Manzella",
-                                                                      ifelse(Attorneys$Purchaser=="CTRACYT","Tyler",NA))))))))
-Attorney_plot<-ggplot(Attorneys,aes(x=Age,y=Count))+
-  geom_point(shape=1)+
-   ggtitle("Average Number of Contracts by Days Awaiting Attorney Review per Attorney")+
-    xlab("Days Awaiting Attorney Review")+ylab("Number of Contracts")+
-    geom_text(aes(label=Attorneys))+
-   print(Attorney_plot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Attorney Review.png")
+#Attorneys1<-aggregate(AttorneyReview_Age ~ Purchaser,data = Opencontracts,length)
+#Attorneys2<-aggregate(AttorneyReview_Age ~ Purchaser,data = Opencontracts,mean)
+#Attorneys<-merge(Attorneys1,Attorneys2,by="Purchaser")
+ #   colnames(Attorneys)[colnames(Attorneys) == "AttorneyReview_Age.x"] <- "Count"
+   # colnames(Attorneys)[colnames(Attorneys) == "AttorneyReview_Age.y"] <- "Age"
+  #      Attorneys$Attorneys<-ifelse(Attorneys$Purchaser=="CJPMEYER","Meyer",
+                   #             ifelse(Attorneys$Purchaser=="CSCWELLMAN","Wellman",
+                                  #     ifelse(Attorneys$Purchaser=="CTDOATES","Oates",
+                                  #        ifelse(Attorneys$Purchaser=="CAJBECNEL","Becnel",
+                                            #     ifelse(Attorneys$Purchaser=="CASZELLER","Zeller",
+                                           #             ifelse(Attorneys$Purchaser=="CCCDYER","Dyer",
+                                                            #   ifelse(Attorneys$Purchaser=="CMJMANZELLA","Manzella",
+                                                               #       ifelse(Attorneys$Purchaser=="CTRACYT","Tyler",NA))))))))
+#Attorney_plot<-ggplot(Attorneys,aes(x=Age,y=Count))+
+#  geom_point(shape=1)+
+ #  ggtitle("Average Number of Contracts by Days Awaiting Attorney Review per Attorney")+
+ #   xlab("Days Awaiting Attorney Review")+ylab("Number of Contracts")+
+ #   geom_text(aes(label=Attorneys))+
+ #  print(Attorney_plot)
+#ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Attorney Review.png")
 
 ## Create scatterplot of contracts awaiting vendor by department
 Vendor1<-aggregate(AwaitingVendor_Age ~ Dept,data = Opencontracts,length)
 Vendor2<-aggregate(AwaitingVendor_Age ~ Dept,data = Opencontracts,mean)
-Vendor<-merge(Vendor1,Vendor2,by="Dept")
-colnames(Vendor)[colnames(Vendor) == "AttorneyReview_Age.x"] <- "Count"
-colnames(Vendor)[colnames(Vendor) == "AttorneyReview_Age.y"] <- "Age"
-
-Attorney_plot<-ggplot(Vendor,aes(x=Age,y=Count))+
+Vendor<-merge(Vendor1,Vendor2,by="Dept")  ## Right now, manually re-code Dept to Dept2
+colnames(Vendor)[colnames(Vendor) == "AwaitingVendor_Age.x"] <- "Count"
+colnames(Vendor)[colnames(Vendor) == "AwaitingVendor_Age.y"] <- "Age"
+Vendor_plot<-ggplot(Vendor,aes(x=Count,y=Age))+
   geom_point(shape=1)+
-  ggtitle("Average Number of Contracts by Days Awaiting Attorney Review per Attorney")+
-  xlab("Days Awaiting Vendor Signature")+ylab("Number of Contracts")+
-  geom_text(aes(label=Vendor))
+  ggtitle("Contracts Awaiting Vendor per Dept")+
+  xlab("Number of Contracts")+ylab("Days Awaiting Vendor Signature")+
+  geom_text(aes(label=Dept2))
 print(Vendor_plot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Awaiting Vendor.png")
 
@@ -365,15 +364,15 @@ ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Execute Type.png")
 ## Create Law KPI calculation, table and chart
 Closedcontracts$KPI_LawDays<-Days(Closedcontracts,ContractDate,DepAttorney)
 Closedcontracts$LawUnder30<-ifelse(Closedcontracts$KPI_LawDays<=30,1,0)
-Closedcontracts$LawOver30<-ifelse(Closedcontracts$KPI_LawDays>30,0,1)
+Closedcontracts$LawOver30<-ifelse(Closedcontracts$KPI_LawDays>30,1,0)
 LawKPI<-select(Closedcontracts,Last_Qtr,LawUnder30,LawOver30)
-LawKPI<-aggregate(cbind(LawKPI$LawUnder30,LawKPI$Over30)~Last_Qtr,data=LawKPI,FUN=sum);colnames(LawKPI)[grepl("V1", colnames(LawKPI))] <- "Under30";colnames(LawKPI)[grepl("V2", colnames(LawKPI))] <- "Over30"
+LawKPI<-aggregate(cbind(LawKPI$LawUnder30,LawKPI$LawOver30)~Last_Qtr,data=LawKPI,FUN=sum);colnames(LawKPI)[grepl("V1", colnames(LawKPI))] <- "Under30";colnames(LawKPI)[grepl("V2", colnames(LawKPI))] <- "Over30"
 LawKPI<-subset(LawKPI,Last_Qtr>"2012 Q4")
   LawKPI$Total<-LawKPI $Under30+LawKPI$Over30
       LawKPI$Under_30<-round(LawKPI$Under30/LawKPI$Total,3)
-          LawKPI$Over_30<-round(POdist$Over4/POdist$Total,3)
+          LawKPI$Over_30<-round(LawKPI$Over30/LawKPI$Total,3)
   LawKPI_dist<-select(LawKPI,Last_Qtr,Under_30,Over_30)   
-    undermaxLawKPI<-max(LawKPI_dist$Under30)
+    undermaxLawKPI<-max(LawKPI_dist$Under_30)
 LawKPI_dist<-melt(LawKPI_dist,id.vars="Last_Qtr")
 LawKPI_dist$position<-ifelse(LawKPI_dist$variable=="Under_30",undermaxLawKPI-.10,1-((1-undermaxLawKPI)/2)) # calculate height of data labels
 LawKPI_dist_plot<-ggplot(LawKPI_dist,aes(x = factor(Last_Qtr), y = value,fill = variable)) + 
@@ -382,13 +381,15 @@ LawKPI_dist_plot<-ggplot(LawKPI_dist,aes(x = factor(Last_Qtr), y = value,fill = 
        ggtitle("Distribution of Days to Draft, Review, and Approve by Law Dept")+
           xlab("Quarters")+ylab("Percent")+
              geom_text(aes(ymax=value,y=position,label=percent(value)),size=4)+
-                 scale_fill_manual(values=c(lightBlue,red),name=" ",labels=c("<=30 Days",">30 Days"))
+                 scale_fill_manual(values=c(lightBlue,red),name=" ",labels=c("<=30 Days",">30 Days"))+
+                      geom_hline(aes(yintercept=.85,colour="#FF0000"),linetype=2,size=1)
 print(LawKPI_dist_plot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Procurement/Law Distribution.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Law Distribution.png")
 
 
 
 ## Write spreadsheets for relevant data frames
-write.csv(contracts,"O:/Projects/ReqtoCheckStat/Query Files/Output/Contracts.csv",na="")
-write.csv(Closedcontracts,"O:/Projects/ReqtoCheckStat/Query Files/Output/Closed Contracts.csv",na="")
-write.csv(Opencontracts,"O:/Projects/ReqtoCheckStat/Query Files/Output/Open Contracts.csv",na="")
+write.csv(contracts,"O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/Contracts.csv",na="")
+write.csv(Closedcontracts,"O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/Closed Contracts.csv",na="")
+write.csv(Opencontracts,"O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/Open Contracts.csv",na="")
+write.csv(LawKPI,"O:/Projects/ReqtoCheckStat/Query Files/KPIs/Law KPI.csv")
