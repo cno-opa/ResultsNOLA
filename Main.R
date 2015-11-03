@@ -2,6 +2,23 @@
 
 .libPaths("C:/Rpackages")
 
+# Load required packages
+library(tidyr) # Contracts
+library(plyr)  # All
+library(dplyr) # All
+library(lubridate) # All
+library(xlsx) # Contracts
+library(gdata)# Contracts
+library(stringr)# Contracts and payments
+library(r2excel)# Contracts (not sure if needed)
+library(reshape2)# Contracts and procurement
+library(zoo)# All
+library(ggplot2)# All
+library(gdata) # Payments
+library(bizdays)# Payments and Procurement
+library(scales)
+library(RCurl)
+
 ### Function for reading R files directly from github.com
 source_https <- function(u, unlink.tmp.certs = FALSE) {
   require(RCurl)
@@ -56,11 +73,10 @@ lm_eqn = function(m) {
 }
 
 source_https("https://raw.githubusercontent.com/cno-opa/graphics/master/plotters.R") # Load OPA theme
-source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Requirements.R") # Load required packages
 source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/NOLA_calendar.R")# Load calendar for business day calculations
 
 ### Load component scripts
-#source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Reqs.R")
+source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Reqs.R")
 source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Procurement.R")
 source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Bids_RFPs_DBEs.R")
 source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Contract_POs.R")

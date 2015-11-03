@@ -197,5 +197,3 @@ ggsave("./ReqtoCheckSTAT/Query Files/Slides/BidResponse-ContractValue Regression
 
 ### Create linear regression model of the effect of the number of responses on the estimated contract value
 Bid_Model<-lm(Value~Responses,BidValues)
-
-
