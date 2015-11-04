@@ -1,3 +1,5 @@
+.libPaths("C:/RPackages")
+
 # Load required packages
 library(tidyr) # Contracts
 library(plyr)  # All
