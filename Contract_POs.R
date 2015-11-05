@@ -207,11 +207,11 @@ contracts$Qtr_End<-as.Date(as.yearqtr(contracts$Last_Qtr), frac = 1 )  ## Find e
 contracts$Qtr_End<-ifelse(!is.na(contracts$CancelDate),as.Date( as.yearqtr(contracts$CancelDate), frac = 1 ),contracts$Qtr_End);class(contracts$Qtr_End)<-"Date"
 
 ## Create plot of the contracts opened, closed, and open at the end of each quarter
-Qtr_First_summary<-ddply(contracts,"First_Qtr",summarise,n=n())
-Qtr_End_summary<-ddply(contracts,"Last_Qtr",summarise,n=n())
-Qtr_First_summary<-rename(Qtr_First_summary,Qtr=First_Qtr,Opened=n)
-Qtr_End_summary<-rename(Qtr_End_summary,Qtr=Last_Qtr,Closed=n)
-summary_merge<-merge(Qtr_First_summary,Qtr_End_summary,by="Qtr",all=TRUE)
+con_First<-data.frame(table(contracts$First_Qtr))
+con_End<-data.frame(table(contracts$Last_Qtr))
+con_First<-rename(con_First,Qtr=Var1,Opened=Freq)
+con_End<-rename(con_End,Qtr=Var1,Closed=Freq)
+summary_merge<-merge(con_First,con_End,by="Qtr",all=TRUE);summary_merge$Qtr<-as.yearqtr(summary_merge$Qtr)
   summary_merge$cumulative_opened<-cumsum(summary_merge$Opened)
   summary_merge$cumulative_closed<-cumsum(summary_merge$Closed)
   summary_merge$Open_EndofQtr<-summary_merge$cumulative_opened-summary_merge$cumulative_closed
