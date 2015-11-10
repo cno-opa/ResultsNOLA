@@ -62,18 +62,11 @@ Age<-function(df,StartDt,QtrEnd){
   round((strptime(QtrEnd,"%Y-%m-%d")-strptime(StartDt,"%Y-%m-%d"))/86400,digits=0)
 }
 
-### Function to add regression equation and r-squared to scatterplot
-lm_eqn = function(m) {    
-   l <- list(a = format(coef(m)[1], digits = 2),       
-             b = format(abs(coef(m)[2]), digits = 2),       
-             r2 = format(summary(m)$r.squared, digits = 3));
-   if (coef(m)[2] >= 0)  {     eq <- substitute(italic(y) == a + b %.% italic(x)*","~~italic(r)^2~"="~r2,l)   } 
-   else {     eq <- substitute(italic(y) == a - b %.% italic(x)*","~~italic(r)^2~"="~r2,l)       }
-   as.character(as.expression(eq));
-}
 
 source_https("https://raw.githubusercontent.com/cno-opa/graphics/master/plotters.R") # Load OPA theme
 source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/NOLA_calendar.R")# Load calendar for business day calculations
+source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/Multiplot function.R")
+source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/lm_equation.R")
 
 ### Load component scripts
 source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Reqs.R")
