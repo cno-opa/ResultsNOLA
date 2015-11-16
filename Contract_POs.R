@@ -10,6 +10,12 @@ contractReqapproval<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Con
 LawExec<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law and Executive Counsel Log.csv",na.strings="")
                           ,PO=PO.Number,AltID=K.Number,BackFromVendor=Date.Received.by.Law,DownForSignature=Date.Received.by.EX,AdjustedSignDate=Date.Signed.by.MAY,Vendor,Dept=Description) ## List compiled by Law and Executive Counsel
 Adjustments<-read.xlsx2("O:/Projects/ReqtoCheckSTAT/Query Files/Adjustments.xlsx",sheetIndex=1,colClasses=c("character","character","Date","Date","numeric","Date","character","Date","character","character","character",na.strings=""))
+PO_Notes<-read.csv("O:/Projects/ReqtoCheckStat/Query Files/PO_Notes.csv")
+PO_Comments<-read.csv("O:/Projects/ReqtoCheckStat/Query Files/PO_Comments.csv")
+
+# Fill in contract PO approval with ECMS comments and notes 
+contractPOapproval$Comment<-ifelse(contractPOapproval$PO %in% PO_Comments$PO,as.character(PO_Comments$Comment),NA)
+contractPOapproval$Note<-ifelse(contractPOapproval$PO %in% PO_Notes$PO,as.character(PO_Notes$Note),NA)
 
 ## Read in, and merge Law Master files
 LawMaster<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law Master_hist.csv",strip.white=TRUE),PO=PO.Number,AltID=K.Number,Admin_ContractDate=Date.In.Law,Dept=Department,Vendor,Govt,Type=Type.of.K,LawStatus=Status) ##Lists compiled by Law
