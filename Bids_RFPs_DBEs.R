@@ -140,61 +140,52 @@ RFP_dist$Between7_9<-round(RFP_dist$Between7_9/RFP_dist$Total,3) ### Divide bin 
 RFP_dist$Over10<-round(RFP_dist$Over10/RFP_dist$Total,3) ### Divide bin by total to get quarterly percentage 
 ###
 RFP_dist<-select(RFP_dist,Qtr,Under3,Between3_6,Between7_9,Over10)
-##Define data label positions (heights) for distribution
-undermaxRFP<-max(RFP_dist$Under3); 
-min4_6<-min(RFP_dist$Between4_6)+undermaxRFP;
-min7_9<-min(RFP_dist$Between7_9)+min4_6;
-overmin_bid<-min(RFP_dist$Over10)+min7_9
 ### Melt data frame
 RFP_dist<-melt(RFP_dist,id.vars="Qtr")
 ### Calculate data label position height
-RFP_dist$position<-ifelse(RFP_dist$variable=="Under3",RFP_dist$value-.03,
-                          ifelse(RFP_dist$variable=="Between4_6",sum(undermaxbid, min4_6)/2,
-                                 ifelse(RFP_dist$variable=="Between7_9",sum(min4_6,min7_9)/2,.99))) 
 ### Plot RFPs
 RFP_dist_plot<-ggplot(RFP_dist,aes(x = factor(Qtr), y = value,fill = variable)) + 
   geom_bar(position = "stack",stat = "identity") + 
   scale_y_continuous(labels = percent_format())+
   ggtitle("Distribution of Proposals per RFP")+
   xlab("Quarters")+ylab("Percent")+
-  geom_text(aes(ymax=value,y=position,label=percent(value)),size=4)+
-  scale_fill_manual(values=c(red,darkBlue,lightBlue,"green"),name=" ",labels=c("<=3 Proposals","4-6 Proposals","7-9 Proposals","<=10 Proposals"))
+    scale_fill_manual(values=c(red,darkBlue,lightBlue,"green"),name=" ",labels=c("<=3 Proposals","4-6 Proposals","7-9 Proposals","<=10 Proposals"))
 print(RFP_dist_plot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Bids-RFPs-DBEs/RFP Distribution.png")
 ############################################################################################################################
 
 ## Clean data and create linear regression model on the effects of the number of bid/RFP responses on contract value, 
-##as compiled from Purchasing and Supplier Diversity 
+##as compiled from Purchasing and Supplier Diversity (UNDER CONSTRUCTION)
 
 ###
-Bids_RFPs<-select(Bids_RFPs,Number,Responses)
+#Bids_RFP_lm<-select(Bids_RFPs,Number,Responses)
 
 ###
-BidValues<-merge(DBE,Bids_RFPs,by="Number",all=TRUE)
+#BidValues<-merge(DBE,Bids_RFP_lm,by="Number",all=TRUE)
 
 ### 
-BidValues<-filter(BidValues,!is.na(Responses))
+#BidValues<-filter(BidValues,!is.na(Responses))
 
 ### Coerce contract value variable into numeric class
-BidValues$Estimated_Contract_Value<-gsub("\\$","",BidValues$Estimated_Contract_Value)
-class(BidValues$Estimated_Contract_Value)<-"numeric"
+#BidValues$Estimated_Contract_Value<-gsub("\\$","",BidValues$Estimated_Contract_Value)
+#class(BidValues$Estimated_Contract_Value)<-"numeric"
 
 ### Plot bids
-BidValues<-select(BidResponse,Number,Value=Estimated_Contract_Value,Responses)
-BidValues<-filter(BidValues,!is.na(Value))
-BidValues$Val_log<-log(BidValues$Value)
+#BidValues<-select(BidResponse,Number,Value=Estimated_Contract_Value,Responses)
+#BidValues<-filter(BidValues,!is.na(Value))
+#BidValues$Val_log<-log(BidValues$Value)
 
 ### Create regression plot
-Bidvalue_plot<-ggplot(BidValues,aes(x=Val_log,y=Responses))+
-  geom_point(shape=1)+
-  geom_smooth(method=lm,
-              se=TRUE)+
-  ggtitle("Regression of the effect of the Number of Responses on Contract Values")+
-  facet_grid(facets=.~Stage)+
-  geom_text(x=16,y=10,label=lm_eqn(lm(Value~Responses,BidValues)),parse=TRUE)+ ### lm_eqn is a custom function that adds regression equation and Rsquared to plot
-  xlab("Contract Value(log)")+ylab("Responses")
-print(Bidvalue_plot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Bids-RFPs-DBEs/BidResponse-ContractValue Regression.png")
+#Bidvalue_plot<-ggplot(BidValues,aes(x=Val_log,y=Responses))+
+#  geom_point(shape=1)+
+ # geom_smooth(method=lm,
+#              se=TRUE)+
+#  ggtitle("Regression of the effect of the Number of Responses on Contract Values")+
+#  facet_grid(facets=.~Stage)+
+#  geom_text(x=16,y=10,label=lm_eqn(lm(Value~Responses,BidValues)),parse=TRUE)+ ### lm_eqn is a custom function that adds regression equation and Rsquared to plot
+#  xlab("Contract Value(log)")+ylab("Responses")
+#print(Bidvalue_plot)
+#ggsave("./ReqtoCheckSTAT/Query Files/Slides/Bids-RFPs-DBEs/BidResponse-ContractValue Regression.png")
 
 ### Create linear regression model of the effect of the number of responses on the estimated contract value
-Bid_Model<-lm(Value~Responses,BidValues)
+#Bid_Model<-lm(Value~Responses,BidValues)
