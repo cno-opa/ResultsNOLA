@@ -63,13 +63,13 @@ Age<-function(df,StartDt,QtrEnd){
 }
 
 
-source_https("https://raw.githubusercontent.com/cno-opa/graphics/master/plotters.R") # Load OPA theme
-source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/NOLA_calendar.R")# Load calendar for business day calculations
-source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/Multiplot function.R")
-source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/lm_equation.R")
+source_https("https://raw.githubusercontent.com/cno-opa/graphics/master/plotters.R") #### Load OPA theme
+source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/NOLA_calendar.R")#### Load calendar for business day calculations
+source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/Multiplot%20function.R") #### Load function allowing for mulitiple graphs in one plot output
+source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/lm_equation.R") #### Load script for displaying Linear regression equation and R-squared on lm plots
 
 ### Load component scripts
-source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Reqs.R")
+#source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Reqs.R")
 source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Procurement.R")
 source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Bids_RFPs_DBEs.R")
 source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Contract_POs.R")
