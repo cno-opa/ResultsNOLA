@@ -81,7 +81,7 @@ Buyer_Plot<-ggplot(Buyers,aes(x=factor(Qtr),y=WorkingDays,group=Buyer2,color=fac
             geom_text(aes(label=ifelse(Qtr==r_period,Buyer2,""),show_guide=FALSE))+
                 theme(legend.position="none",plot.title=element_text(size=13,face="bold",vjust=1))              
 print(Buyer_Plot)
-ggsave("./ReqtoCheckSTAT/Query Files/Output/Slides/Procurement/Buyer Plot.png")
+ggsave("./ReqtoCheckSTAT/Query Files/Slides/Procurement/Buyer Plot.png")
 
 ## Export the data
 write.csv(POs,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Procurement/POs.csv")
