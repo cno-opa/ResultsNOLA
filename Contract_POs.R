@@ -331,8 +331,7 @@ Contract_PO_Dist_plot<-ggplot(Contract_PO_dist,aes(x = factor(Last_Qtr), y = val
   scale_y_continuous(labels = percent_format())+
   ggtitle("Distribution of Days to Execute Contracts")+
   xlab("Quarters")+ylab("Percent")+
-  geom_text(aes(ymax=value,y=position,label=percent(value)),size=4)+
-  scale_fill_manual(values=c("dark green","339900",lightBlue,darkBlue,red),name=" ",labels=c("<=30 Days","31-60 Days","61-90 Days","91-120 Days","Over 120 Days"))+
+    scale_fill_manual(values=c("dark green","339900",lightBlue,darkBlue,red),name=" ",labels=c("<=30 Days","31-60 Days","61-90 Days","91-120 Days","Over 120 Days"))+
   theme(plot.title=element_text(size=13,face="bold",vjust=1))
 print(Contract_PO_Dist_plot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Contract PO Distribution.png")
