@@ -10,8 +10,8 @@ contractReqapproval<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Con
 LawExec<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Law and Executive Counsel Log.csv",na.strings="")
                           ,PO=PO.Number,AltID=K.Number,BackFromVendor=Date.Received.by.Law,DownForSignature=Date.Received.by.EX,AdjustedSignDate=Date.Signed.by.MAY,Vendor,Dept=Description) ## List compiled by Law and Executive Counsel
 Adjustments<-read.xlsx2("O:/Projects/ReqtoCheckSTAT/Query Files/Adjustments.xlsx",sheetIndex=1,colClasses=c("character","character","Date","Date","numeric","Date","character","Date","character","character","character",na.strings=""))
-PO_Notes<-read.csv("O:/Projects/ReqtoCheckStat/Query Files/PO_Notes.csv")
-PO_Comments<-read.csv("O:/Projects/ReqtoCheckStat/Query Files/PO_Comments.csv")
+PO_Notes<-read.csv("O:/Projects/ReqtoCheckStat/Query Files/PO_Notes.csv") ### Still need to incorporate into cleaned datasets
+PO_Comments<-read.csv("O:/Projects/ReqtoCheckStat/Query Files/PO_Comments.csv") ### Still need to incorporate into cleaned datasets
 
 ## Data Cleaning
 
