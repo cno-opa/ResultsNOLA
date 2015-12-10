@@ -3,7 +3,7 @@
 #### Read in raw data
 Raw_GP<-select(read.csv("O:/Projects/ReqtoCheckStat/Query Files/Raw_GP.csv"),
                Check=Check.Number,PO=Purchase.Order.Number,Account=Account.Number.String,Vendor=Vendor.Name,
-               Debit,Inv.Amount:Actual.Apply.To.Amount,Amount=Check.Apply.Amount,Address.1:Zip.Code,
+               Debit:Actual.Apply.To.Amount,Amount=Check.Apply.Amount,Address.1:Zip.Code,
                Desc=Transaction.Description,CheckDate=Check.GL.Posting.Date)
 Orgs<-read.csv("O:/Projects/ReqtoCheckStat/Query Files/Org Codes.csv")
 Agency<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Agency codes.csv")             
