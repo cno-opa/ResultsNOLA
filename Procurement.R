@@ -38,14 +38,14 @@ POs$Over4<-ifelse(POs$WorkingDays<=4,0,1)
 ### Plotting
 
 #### Plot the business days to process by quarter
-Days2PO<-aggregate(data=POs,WorkingDays~Qtr,FUN=mean)
+Days2PO<-cbind(aggregate(data=POs,WorkingDays~Qtr,FUN=mean),select(aggregate(data=POs,Req~Qtr,FUN=length),-Qtr,Count=Req))                    
 Purchasing<-ggplot(Days2PO,aes(x=factor(Qtr),y=WorkingDays))+
     geom_bar(stat="identity",fill="steelblue")+
       ggtitle("Average Business Days to Process Purchase Orders")+
           xlab("Quarters")+ylab("Business Days")+
-              geom_text(aes(y=WorkingDays,ymax=WorkingDays+1,label=round(WorkingDays,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)+
+              geom_text(aes(y=WorkingDays,ymax=WorkingDays,label=round(WorkingDays,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)+
                 geom_hline(aes(yintercept=4,colour="#FF0000"),linetype=2,size=1)+
-                  theme(plot.title=element_text(size=13,face="bold",vjust=1))   
+                  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))   
 print(Purchasing)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Procurement/Days to PO.png")
 
@@ -89,6 +89,9 @@ Buyer_Plot<-ggplot(Buyers,aes(x=factor(Qtr),y=WorkingDays,group=Buyer2,color=fac
 print(Buyer_Plot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Procurement/Buyer Plot.png")
 
-#### Export the data
+#### Export datasets to respective output folder
 write.csv(POs,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Procurement/POs.csv")
 write.csv(Buyers,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Procurement/Buyers.csv")
+
+## Export KPI data table to STAT KPI folder
+write.csv(Days2PO,"O:/Projects/STAT KPIs/ReqtoCheckSTAT/Days to PO.csv")
