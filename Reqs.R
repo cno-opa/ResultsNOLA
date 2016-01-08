@@ -11,54 +11,69 @@ Reqs<-merge(ReqApproval,ReqStatus,by=c("REQ_NBR"),all.x=TRUE)
 Reqs$Requestor<-paste(Reqs$FIRST_NAME,"",Reqs$LAST_NAME)
 
 #### Select desired columns
-Reqs<-select(Reqs,Req=REQ_NBR,Order=ORDER_SEQUENCE,ReqDate=ENTERED_DATE,SubmissionDate=REQ_REQ_APP_DATE,ApproverType=REQ_APPROVER_TYPE,Location=LOCATION_NBR_REF,Approver=REQ_APPROVER,Dept=DESC_TEXT,Description=SHORT_DESC,ReqType=DESCRIPTION,Requestor,Cost=EST_COST,STATUS,ApprovalDate=APPROVAL_DATE)
+Reqs<-select(Reqs,Req=REQ_NBR,Order=ORDER_SEQUENCE,ReqDate=ENTERED_DATE,SubmissionDate=REQ_REQ_APP_DATE,ApprovalDate=APPROVAL_DATE,ApproverType=REQ_APPROVER_TYPE,Location=LOCATION_NBR_REF,Approver=REQ_APPROVER,Dept=DESC_TEXT,Description=SHORT_DESC,ReqType=DESCRIPTION,Requestor,Cost=EST_COST,STATUS)
 
 #### Filter list to exclude requisitions that were cancelled or returned to the department without approval
 Reqs<-filter(Reqs,STATUS!="Canceled" & STATUS!="Returned" & STATUS!="In Progress")
 
-#### Code approval levels
-Reqs$ApproverLevel<-ifelse(Reqs$Dept=="CAO BUDGET & OPERATIONS" & Reqs$Order==2 & Reqs$Approver!="CAOBDF01"|Reqs$Dept=="CAO BUDGET & OPERATIONS" & Reqs$Approver=="CAOAHE01" & Reqs$Order>=2|Reqs$Dept=="CAO BUDGET & OPERATIONS"& Reqs$Approver=="CAMFM01" & Reqs$Order>=2|Reqs$Approver=="CAOTMB01" & Reqs$Order>=2,"Budget",
-                           ifelse(Reqs$Dept=="FINANCE DIRECTORS OFFICE" & Reqs$Order>=2 & Reqs$Approver!="FIAML01"|Reqs$Approver=="FIRFB01","Finance","Department"))
+#### Convert relevant columns to dates
+Reqs[,3:5]<-lapply(Reqs[,3:5], function(x) as.POSIXct(x,format="%m/%d/%Y %H:%M"))
 
-#### Clean dataset
-Reqs<-Reqs %>%
-  group_by(Req) %>% ## Group reqs by Req number
-  #arrange(desc(Order))
-  top_n(3,Order) ### Filter to only include the highest three approval levels (one level each representing the requesting department, Budget, and Finance)
+#### Filter for reqs 
+Reqs<-getTwoYears(Reqs,ReqDate,"dec 2015")
 
+#### Cut up and for loop through each "Order" level for each req number to code 
+#### whether the row approval is at the Finance, Budget, or Departmental level
+reqs <- Reqs %>% mutate(stage = NA)
+
+reqs_with_stages <- data.frame()
+
+uniquereqs <- unique(reqs$Req)
+
+for(i in 1:length(uniquereqs)) {
+  
+  slice <- reqs %>% filter(Req == uniquereqs[i])
+  last_stage <- max(slice$Order)
+  
+  for(i in 1:length(slice$Order)){
+    
+    if(slice$Order[i] == last_stage) {
+      slice$stage[i] <- "Finance"
+    } else if(slice$Order[i] == last_stage - 1) {
+      slice$stage[i] <- "Budget"
+    } else if (slice$Order[i] == last_stage - 2){
+      slice$stage[i] <- "Department"
+    } else {
+      slice$stage[i]<-"NA"
+    }
+  }
+  
+  reqs_with_stages <- rbind(reqs_with_stages, slice)
+  
+}
+
+####
+Reqs<-reqs_with_stages
+  
 #### Select the relevant columns
-Reqs<-select(Reqs,-Dept,-Approver,-ApproverType,-Order)
+Reqs<-select(Reqs,-Approver,-ApproverType,-Order,-Location,ApproverLevel=stage,-Dept)
 
-#### Convert dataset back to data frame
-class(Reqs)<-"data.frame"
+#### Filter out approvals prior to the final departmental approval
+Reqs<-Reqs[Reqs$ApproverLevel!="NA",]
 
-#### Convert relevant columns to POSIXct, to make it possible to compute days to approve, down to the minute.
-Reqs$ReqDate<-as.POSIXct(Reqs$ReqDate,format="%m/%d/%Y %H:%M")
-Reqs$SubmissionDate<-as.POSIXct(Reqs$SubmissionDate,format="%m/%d/%Y %H:%M")
-Reqs$ApprovalDate<-as.POSIXct(Reqs$ApprovalDate,format="%m/%d/%Y %H:%M")
-
-#### Remove department and extract latest department approval, prior to merging back with rest of dataset
-Dept<-filter(Reqs,ApproverLevel=="Department")%>%
-  select(Req,ApprovalDate)%>%
-    group_by(Req)%>%
-      top_n(1)
-
-#### Re-name department approval column to "Department"
-colnames(Dept)[2]<-"Department"
-
-#### Filter master data set to only include Budget and Finance approvals, and then pivot those approval times into new Budget and Finance columns
-Reqs<-filter(Reqs,ApproverLevel!="Department")%>%
-        spread(ApproverLevel,ApprovalDate)
+#### Pivot approval times into Department, Budget, and Finance columns
+Reqs<-spread(Reqs,ApproverLevel,ApprovalDate)
 
 #### Merge master data set with department approval data set
-Reqs<-merge(Reqs,Dept,by="Req",all=TRUE)%>%
-  select(Req:STATUS,Department,Budget,Finance)
+#Reqs<-merge(Reqs,Dept,by="Req",all=TRUE)%>%
+ # select(Req:STATUS,Department,Budget,Finance)
 
 #### Calculate days to approve by stage
 Reqs$Budget_Days<-ReqDays(Reqs,Department,Budget,2)
 Reqs$Finance_Days<- ReqDays(Reqs,Budget,Finance,2)
 
-
+#### Code each req into quarters based on the date of final approval by Finance
+Reqs$Qtr<-as.yearqtr(Reqs$Finance)
 
 #### Create csv's
 write.csv(Reqs,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Reqs/Reqs.csv")
