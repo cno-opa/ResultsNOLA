@@ -64,6 +64,7 @@ Age<-function(df,StartDt,QtrEnd){
 
 
 source_https("https://raw.githubusercontent.com/cno-opa/graphics/master/plotters.R") #### Load OPA theme
+source_https("https://raw.githubusercontent.com/cno-opa/stat-template/master/R/lib/utils.R") 
 source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/NOLA_calendar.R")#### Load calendar for business day calculations
 source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/Multiplot%20function.R") #### Load function allowing for mulitiple graphs in one plot output
 source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/lm_equation.R") #### Load script for displaying Linear regression equation and R-squared on lm plots
