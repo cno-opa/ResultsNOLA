@@ -18,6 +18,7 @@ library(gdata) # Payments
 library(bizdays)# Payments and Procurement
 library(scales)
 library(RCurl)
+library(data.table)#### setnames function
 
 ### Function for reading R files directly from github.com
 source_https <- function(u, unlink.tmp.certs = FALSE) {
