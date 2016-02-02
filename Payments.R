@@ -4,8 +4,8 @@
 ### Import data
 GP<-read.csv("O:/Projects/ReqtoCheckStat/Query Files/Great Plains master.csv") ### "General Fund" data collected from Great Plains
 AFIN<-select(read.csv("O:/Projects/ReqtoCheckStat/Query Files/AFIN master.csv"),Check,Fund,PV,Department,Vendor,InvoiceDate,StampDate,APDate,CheckDate,Amount) ### "Capital/Grant Fund" data collected from AFIN
-Orgs<-select(read.csv("O:/Projects/ReqtoCheckStat/Query Files/Org Codes.csv"),Org_code=Segment.ID,Dept2=Description)
-#Dep_code<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Dept Codebook.csv")
+#Orgs<-select(read.csv("O:/Projects/ReqtoCheckStat/Query Files/Org Codes.csv"),Org_code=Segment.ID,Org_desc=Description)
+#Agencies<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Agency Codes.csv"),Agency_code=Segment.ID,Agency_desc=Description)
 
 
 ### Data cleaning
@@ -50,11 +50,24 @@ AFIN$TotalDays<-ifelse(AFIN$TotalDays<0,0,AFIN$TotalDays) ### Adjust any payment
 GP$Qtr<-as.yearqtr(GP$Check.Date,format="%Y-%m-%d")
 AFIN$Qtr<-as.yearqtr(AFIN$CheckDate,format="%Y-%m-%d")
 
-#### Recode account string to generate department variable.
-GP$Org_code<-substr(GP$Account.String,11,14)
-GP$Org_code<-trim(GP$Org_code)
-GP<-merge(GP,Orgs,by="Org_code",all.x=TRUE)
 
+#### Recode account string to generate department variable
+
+##### Extract agency and org codes from the five-segment accounting string for each transaction
+GP$Agency_code<-substr(GP$Account.String,6,9); GP$Agency_code<-ifelse(startsWith(GP$Agency_code,"0"),substr(GP$Agency_code,2,4),GP$Agency_code)
+GP$Org_code<-substr(GP$Account.String,11,14)
+
+##### Trim extraneous characters and white space from agency and org codes in master dataset, as well as codebook datasets
+#Agencies$Agency_code<-trim(Agencies$Agency_code)
+#Orgs$Org_codes<-trim(Orgs$Org_code)
+#GP[c("Agency_code","Org_code")]<-lapply(GP[c("Agency_code","Org_code")], trim)
+
+##### 
+#GP$Agency<-ifelse(GP$Agency_code %in% Agencies$Agency_code, as.character(Agencies$Agency_desc),NA)
+#GP$Org<-ifelse(GP$Org_code %in% Orgs$Org_code, as.character(Orgs$Org_desc),NA)
+#GP$Dept<-paste(as.character(GP$Agency)," - ",as.character(GP$Org))
+
+               
 #### Select desired columns
 GP<-select(GP,Check=Check..,PO=Purchase.Order.Number,
     Account.String,Org_code,Dept2,Department,Invoice.Date,Stamp.Date,
@@ -88,7 +101,8 @@ GF_AP_Dayplot<-ggplot(GF_AP_Days,aes(x=factor(Qtr),y=AP))+
       ggtitle("Business Days to Process General Fund Payments by Accounts Payable")+
         xlab("Quarters")+ylab("Business Days")+
           geom_text(aes(y=AP,ymax=AP+1,label=round(AP,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)+
-            geom_hline(aes(yintercept=7,colour="#FF0000"),linetype=2,size=1)
+            geom_hline(aes(yintercept=7,colour="#FF0000"),linetype=2,size=1)+
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25,face="bold"))   
 print(GF_AP_Dayplot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Payments/General Fund AP Days.png")
 
@@ -99,7 +113,8 @@ CG_AP_Dayplot<-ggplot(CG_AP_Days,aes(x=factor(Qtr),y=AP))+
       ggtitle("Business Days to Process Capital/Grant Payments by Accounts Payable")+
         xlab("Quarters")+ylab("Business Days")+
           geom_text(aes(y=AP,ymax=AP+1,label=round(AP,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)+
-            geom_hline(aes(yintercept=7,colour="#FF0000"),linetype=2,size=1)
+            geom_hline(aes(yintercept=7,colour="#FF0000"),linetype=2,size=1)+
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25,face="bold"))   
 print(CG_AP_Dayplot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Payments/Capital-Grant AP Days.png")
 
@@ -120,7 +135,8 @@ GF_APdist_plot<-ggplot(GF_APdist,aes(x = factor(Qtr), y = value,fill = variable)
   scale_y_continuous(labels = percent_format())+
   ggtitle("Business Days to Process \nPayments by Accounts Payable")+
   xlab("Quarters")+ylab("Percent")+
-  scale_fill_manual(values=c(darkBlue,lightBlue,red),name=" ",labels=c("<=7 Business Days","7-14 Business Days",">14 Business Days"))
+  scale_fill_manual(values=c(darkBlue,lightBlue,red),name=" ",labels=c("<=7 Business Days","7-14 Business Days",">14 Business Days"))+
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25,face="bold"))   
 print(GF_APdist_plot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Payments/General Fund AP Distribution.png")
 
@@ -138,7 +154,8 @@ CG_APdist_plot<-ggplot(CG_APdist,aes(x = factor(Qtr), y = value,fill = variable)
   scale_y_continuous(labels = percent_format())+
   ggtitle("Business Days to Process n\ Payments by Accounts Payable")+
   xlab("Quarters")+ylab("Percent")+
-  scale_fill_manual(values=c(darkBlue,lightBlue,red),name=" ",labels=c("<=7 Business Days","7-14 Business Days",">14 Business Days"))
+  scale_fill_manual(values=c(darkBlue,lightBlue,red),name=" ",labels=c("<=7 Business Days","7-14 Business Days",">14 Business Days"))+
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25,face="bold"))   
 print(CG_APdist_plot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Payments/General Fund AP Distribution.png")
 
@@ -152,7 +169,8 @@ GF_Check_Dayplot<-ggplot(GF_Check_Days,aes(x=factor(Qtr),y=TotalDays))+
     ggtitle("Days from Invoice to Check - General Fund")+
       xlab("Quarters")+ylab("Days")+
         geom_text(aes(y=TotalDays,ymax=TotalDays+1,label=round(TotalDays,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)+
-          geom_hline(aes(yintercept=30,colour="#FF0000"),linetype=2,size=1)
+          geom_hline(aes(yintercept=30,colour="#FF0000"),linetype=2,size=1)+
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25,face="bold"))   
 print(GF_Check_Dayplot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Payments/GP Invoice to Check Days.png")
 
@@ -163,7 +181,8 @@ CG_Checkplot<-ggplot(CG_Check,aes(x=factor(Qtr),y=TotalDays))+
     ggtitle("Days from Invoice to Check - Capital/Grant")+
       xlab("Quarters")+ylab("Days")+
         geom_text(aes(y=TotalDays,ymax=TotalDays+1,label=round(TotalDays,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)+
-          geom_hline(aes(yintercept=45,colour="#FF0000"),linetype=2,size=1)
+          geom_hline(aes(yintercept=45,colour="#FF0000"),linetype=2,size=1)+
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25,face="bold"))   
 print(CG_Checkplot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Payments/AFIN Invoice to Check Days.png")
 
@@ -192,7 +211,7 @@ GF_dist_plot<-ggplot(GF_dist,aes(x = factor(Qtr), y = value,fill = variable)) +
   ggtitle("Days from Invoice to Check \n - General Fund")+
   xlab("Quarters")+ylab("Percent")+
   scale_fill_manual(values=c("339900","green",lightBlue,darkBlue,red) ,name=" ",labels=c("<=30","31-60","61-90","91-120",">120"))+
-  theme(plot.title=element_text(size=13,face="bold",vjust=1))
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25,face="bold"))   
 print(GF_dist_plot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Payments/General Fund Payment Distribution.png")
 
@@ -216,7 +235,7 @@ CG_dist_plot<-ggplot(CG_dist,aes(x = factor(Qtr), y = value,fill = variable)) +
   ggtitle("Days from Invoice to Check \n - Capital/Grants")+
   xlab("Quarters")+ylab("Percent")+
   scale_fill_manual(values=c("339900","green",lightBlue,red) ,name=" ",labels=c("<=45","46-90","91-135",">135"))+
-  theme(plot.title=element_text(size=13,face="bold",vjust=1))
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25,face="bold"))   
 print(CG_dist_plot)
 ggsave("./ReqtoCheckSTAT/Query Files/Slides/Payments/Capital-Grant Payment Distribution.png")
 
