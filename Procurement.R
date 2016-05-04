@@ -47,7 +47,7 @@ Purchasing<-ggplot(Days2PO,aes(x=factor(Qtr),y=WorkingDays))+
                 geom_hline(aes(yintercept=4,colour="#FF0000"),linetype=2,size=1)+
                   theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))   
 print(Purchasing)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Procurement/Days to PO.png")
+ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Procurement/Days to PO.png")
 
 #### Plot the distribution percentages of business days to process by quarter
 POdist<-select(POs,Qtr,Under4,Over4)
@@ -68,7 +68,7 @@ Dist_plot<-ggplot(POdist,aes(x = factor(Qtr), y = value,fill = variable)) +
              geom_text(aes(ymax=value,y=position,label=percent(value)),size=4)+
                  scale_fill_manual(values=c(lightBlue,red),name=" ",labels=c("<=4 Business Days",">4 Business Days"))
 print(Dist_plot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Procurement/PO Distribution.png")
+ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Procurement/PO Distribution.png")
 
 
 #### Plot business days to process by Buyer
@@ -76,7 +76,8 @@ r_period<-max(POs$Qtr)
 POs$Buyer2<-ifelse(POs$Buyer=="Bernice Ealy","Ealy",
                     ifelse(POs$Buyer=="Kai Wells","Wells",
                            ifelse(POs$Buyer=="Burma Jackson","Jackson",
-                                  ifelse(POs$Buyer=="Stephanie Warren","Warren",NA))))
+                                  ifelse(POs$Buyer=="Stephanie Warren","Warren",
+                                         ifelse(POs$Buyer=="Thersa C Kendrick","Kendrick",NA)))))
 Buyers<-aggregate(WorkingDays~Qtr+Buyer2,data=POs,mean);Buyers$WorkingDays<-round(Buyers$WorkingDays,2)
 Buyers<-subset(Buyers,Qtr>"2012 Q4")
 Buyer_Plot<-ggplot(Buyers,aes(x=factor(Qtr),y=WorkingDays,group=Buyer2,color=factor(Buyer2)))+
@@ -87,7 +88,7 @@ Buyer_Plot<-ggplot(Buyers,aes(x=factor(Qtr),y=WorkingDays,group=Buyer2,color=fac
             geom_text(aes(label=ifelse(Qtr==r_period,Buyer2,""),show_guide=FALSE))+
                 theme(legend.position="none",plot.title=element_text(size=13,face="bold",vjust=1))              
 print(Buyer_Plot)
-ggsave("./ReqtoCheckSTAT/Query Files/Slides/Procurement/Buyer Plot.png")
+ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Procurement/Buyer Plot.png")
 
 #### Export datasets to respective output folder
 write.csv(POs,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Procurement/POs.csv")
