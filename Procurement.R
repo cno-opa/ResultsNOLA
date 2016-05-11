@@ -51,25 +51,25 @@ ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Procurement/Days to PO.png
 
 #### Plot the distribution percentages of business days to process by quarter
 POdist<-select(POs,Qtr,Under4,Over4)
-POdist<-aggregate(cbind(POdist$Under4,POdist$Over4)~Qtr,data=POdist,FUN=sum);colnames(POdist)[grepl("V1", colnames(POdist))] <- "Under4";colnames(POdist)[grepl("V2", colnames(POdist))] <- "Over4"
+POdist<-aggregate(cbind(POdist$Under4,POdist$Over4)~Qtr,data=POdist,FUN=sum);colnames(POdist)[grepl("V1", colnames(POdist))] <- "<=4";colnames(POdist)[grepl("V2", colnames(POdist))] <- ">4"
 POdist<-subset(POdist,Qtr>"2012 Q4")
-  POdist$Total<-POdist$Under4+POdist$Over4
-      POdist$Under_4<-round(POdist$Under4/POdist$Total,3)
-          POdist$Over_4<-round(POdist$Over4/POdist$Total,3)
-POdist<-select(POdist,Qtr,Under_4,Over_4)
-    undermaxPO<-max(POdist$Under_4)
-POdist<-melt(POdist,id.vars="Qtr")
-POdist$position<-ifelse(POdist$variable=="Under_4",undermaxPO-.10,1-((1-undermaxPO)/2)) # calculate height of data labels
-Dist_plot<-ggplot(POdist,aes(x = factor(Qtr), y = value,fill = variable)) + 
-  geom_bar(position = "stack",stat = "identity") + 
-    scale_y_continuous(labels = percent_format())+
-       ggtitle("Distribution of Business Days to \nProcess Purchase Orders")+
-          xlab("Quarters")+ylab("Percent")+
-             geom_text(aes(ymax=value,y=position,label=percent(value)),size=4)+
-                 scale_fill_manual(values=c(lightBlue,red),name=" ",labels=c("<=4 Business Days",">4 Business Days"))
-print(Dist_plot)
+POdist<-melt(POdist,id.vars="Qtr",variable.name="Days")
+POdist<-POdist %>% group_by(Qtr, Days) %>% 
+  summarise(value = sum(value)) %>%   # Within each quarter, sum all values in each bin of days
+  mutate(percent = value/sum(value),
+         pos = cumsum(percent) - 0.5*percent)
+##### Generate plot
+PO_dist_plot<-ggplot(POdist, aes(x=factor(Qtr),y=percent, fill=Days)) +
+  geom_bar(stat='identity',  width = .7, colour="black", lwd=0.1) +
+  geom_text(aes(label=ifelse(percent >= 0.01, paste0(sprintf("%.0f", percent*100),"%"),""),
+                y=pos), colour="black",size=4) +
+  scale_y_continuous(labels = percent_format()) +
+  scale_fill_manual(values=c("#009900","#FFFFCC"))+
+  labs(y="Days", x="Quarter")+
+  ggtitle("Distribution of Business Days to \n Process Purchase Orders")+
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))   
+print(PO_dist_plot)
 ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Procurement/PO Distribution.png")
-
 
 #### Plot business days to process by Buyer
 r_period<-max(POs$Qtr)
