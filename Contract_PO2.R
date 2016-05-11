@@ -103,12 +103,18 @@ contracts$Ordinance<-ifelse(!is.na(contracts$Ordinance),
                             contracts$Ordinance,
                             ifelse(contracts$PO %in% ord_narrative$PO & is.na(contracts$Ordinance),1,NA))
 
-### 
+### Code additional manual contracts identified through ECMS notes and comments
 contracts$Manual<-ifelse(startsWith(tolower(contracts$AltID),'m'),1,
                          ifelse(contracts$PO %in% manual$PO,1,0))
 
+#### Categorize contracts by type
+contracts$Type2<-ifelse(str_detect(tolower(contracts$Type),"cea"),"CEA",
+                        ifelse(str_detect(tolower(contracts$Type),"psa") & str_detect(tolower(contracts$Type),"15"),"PSA < $15k",
+                               ifelse(str_detect(tolower(contracts$Type),"psa") & !str_detect(tolower(contracts$Type),"15"),"PSA >= $15k",
+                                      ifelse(str_detect(tolower(contracts$Type),"grant"),"Grant",
+                                             ifelse(str_detect(tolower(contracts$Type),"bid"),"Bid","Other")))))
 
-##### Create consolidated start date column to account for contracts with an inaccurate contrat date in ECMS
+##### Create consolidated start date column to account for contracts with an inaccurate contract date in ECMS
 contracts[,"Start_Date"]<-NA
 contracts$Start_Date<-as.POSIXct(contracts$Start_Date)
 
@@ -183,9 +189,11 @@ contracts$Executive_Days<-ifelse(!is.na(contracts$AdjustedSignDate) & !is.na(con
                                           ,NA)
 
 
+
 #### Parse out contracts requiring a City Council Ordinance as a separate dataset 
 ordinance<-contracts[contracts$Ordinance==1,]
 contracts<-anti_join(contracts,ordinance,by="PO")
+
 
 ### Plotting
 
@@ -199,7 +207,7 @@ Execution<-ggplot(Days2Execute,aes(x=factor(Close_Qtr),y=Sign))+
   xlab("Quarters")+ylab("Days")+
   geom_text(aes(y=Sign,ymax=Sign+1,label=round(Sign,1)),position=position_dodge(width=0.9),vjust=-.5,size=5)+
   geom_hline(aes(yintercept=30),colour="#FF0000",linetype=2,size=1.2)+theme(legend.position="Top")+
-  theme(plot.title=element_text(size=13,face="bold",vjust=1))
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))
 print(Execution)
 ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Contract POs/Days to Execute - Non-Ordinance.png")
 
@@ -211,7 +219,7 @@ Ord_Execution<-ggplot(Ord_Days2Execute,aes(x=factor(Close_Qtr),y=Sign))+
   ggtitle("Average Days to Execute Contracts by Quarter \n - Ordinance")+
   xlab("Quarters")+ylab("Days")+
   geom_text(aes(y=Sign,ymax=Sign+1,label=round(Sign,1)),position=position_dodge(width=0.9),vjust=-.5,size=5)+
-  theme(plot.title=element_text(size=13,face="bold",vjust=1))
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))
 print(Ord_Execution)
 ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Contract POs/Days to Execute - Ordinance.png")
 
@@ -223,18 +231,16 @@ contracts$Between31_60<-ifelse(contracts$Execute_Days>30 & contracts$Execute_Day
 contracts$Between61_90<-ifelse(contracts$Execute_Days>60 & contracts$Execute_Days<=90,1,0)
 contracts$Between91_120<-ifelse(contracts$Execute_Days>90 & contracts$Execute_Days<=120,1,0)
 contracts$Over120<-ifelse(contracts$Execute_Days>120,1,0)
-
 ##### Aggregation and melting
 con_PO_dist<-select(contracts,Close_Qtr,Under30,Between31_60,Between61_90,Between91_120,Over120)
 con_PO_dist<-aggregate(cbind(con_PO_dist$Under30,con_PO_dist$Between31_60,con_PO_dist$Between61_90,con_PO_dist$Between91_120,con_PO_dist$Over120)~Close_Qtr,data=con_PO_dist,FUN=sum);colnames(con_PO_dist)[grepl("V1", colnames(con_PO_dist))] <- "<=30";colnames(con_PO_dist)[grepl("V2", colnames(con_PO_dist))] <- "31-60";colnames(con_PO_dist)[grepl("V3", colnames(con_PO_dist))] <- "61-90";colnames(con_PO_dist)[grepl("V4", colnames(con_PO_dist))] <- "91-120";colnames(con_PO_dist)[grepl("V5", colnames(con_PO_dist))] <- ">120"
 con_PO_dist<-subset(con_PO_dist,Close_Qtr>"2012 Q2")
 con_PO_dist<-melt(con_PO_dist,id.vars="Close_Qtr",variable.name="Days")
-
 con_PO_dist<-con_PO_dist %>% group_by(Close_Qtr, Days) %>% 
-  summarise(value = sum(value)) %>%   # Within each Brand, sum all values in each Category
+  summarise(value = sum(value)) %>%   # Within each quarter, sum all values in each bin of days
   mutate(percent = value/sum(value),
          pos = cumsum(percent) - 0.5*percent)
-
+##### Generate plot
 Execute_dist_plot<-ggplot(con_PO_dist, aes(x=factor(Close_Qtr),y=percent, fill=Days)) +
   geom_bar(stat='identity',  width = .7, colour="black", lwd=0.1) +
   geom_text(aes(label=ifelse(percent >= 0.01, paste0(sprintf("%.0f", percent*100),"%"),""),
@@ -243,9 +249,48 @@ Execute_dist_plot<-ggplot(con_PO_dist, aes(x=factor(Close_Qtr),y=percent, fill=D
   scale_fill_manual(values=c("#009900","#FFFFCC","#FFCC99","#FF9999","#FF3300"))+
   labs(y="Distribution", x="Quarter")+
   ggtitle("Distribution of Days to Execute (Non-Ordinance)")+
-  theme(plot.title=element_text(size=13,face="bold",vjust=1))
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))
 print(Execute_dist_plot)
 ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Contract POs/Execute Distribution.png")
+
+
+
+#### Law KPI calculation
+contracts$KPI_LawDays<-as.numeric(difftime(as.POSIXct(contracts$DepAttorney),as.POSIXct(contracts$ContractDate),units="days"))
+contracts$LawUnder14<-ifelse(contracts$KPI_LawDays<=14,1,0)
+contracts$Law14_28<-ifelse(contracts$KPI_LawDays>14 & contracts$KPI_LawDays<29,1,0)
+contracts$LawOver28<-ifelse(contracts$KPI_LawDays>=29,1,0)
+LawKPI<-select(contracts,Close_Qtr,LawUnder14,Law14_28,LawOver28)
+LawKPI<-aggregate(cbind(LawKPI$LawUnder14,LawKPI$Law14_28,LawKPI$LawOver28)~Close_Qtr,data=LawKPI,FUN=sum);colnames(LawKPI)[grepl("V1", colnames(LawKPI))] <- "Under14";colnames(LawKPI)[grepl("V2", colnames(LawKPI))] <- "Between14_28";colnames(LawKPI)[grepl("V3", colnames(LawKPI))] <- "Over28"
+LawKPI<-subset(LawKPI,Close_Qtr>"2012 Q2")
+LawKPI<-melt(LawKPI,id.vars="Close_Qtr",variable.name="Days")
+LawKPI<-LawKPI %>% group_by(Close_Qtr, Days) %>% 
+  summarise(value = sum(value)) %>%   # Within each quarter, sum all values in each bin of days
+  mutate(percent = value/sum(value),
+         pos = cumsum(percent) - 0.5*percent)
+##### Generate plot
+Law_plot<-ggplot(LawKPI, aes(x=factor(Close_Qtr),y=percent, fill=Days)) +
+  geom_bar(stat='identity',  width = .7, colour="black", lwd=0.1) +
+  geom_text(aes(label=ifelse(percent >= 0.01, paste0(sprintf("%.0f", percent*100),"%"),""),
+                y=pos), colour="black",size=4) +
+  scale_y_continuous(labels = percent_format()) +
+  scale_fill_manual(values=c("#009900","#FFCC99","#FF9999"))+
+  labs(y="Distribution", x="Quarter")+
+  ggtitle("Days to Review and Approve by Law Dept")+
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))   
+print(Law_plot)
+ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Contract POs/Law Distribution.png")
+
+
+
+#### Days to execute by type
+Execute_Type<-aggregate(Execute_Days~Close_Qtr+Type2,data=contracts,mean)
+Execute_Type<-subset(Execute_Type,Close_Qtr>"2012 Q4")
+ExecuteType_Plot<-ggplot(Execute_Type,aes(x=factor(Close_Qtr),y=Execute_Days,group=Type2,color=factor(Type2)))+
+                  geom_line(stat="identity",size=1.25)
+print(ExecuteType_Plot)
+#ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Execute Type.png")
+
 
 
 #### Create subsets of data for sending to Law and Executive Counsel
@@ -256,7 +301,9 @@ closed_contracts<-contracts[contracts$Close_Qtr<=as.yearqtr(last),]
 ##### 
 Exec_queue<-contracts[is.na(contracts$Executive) & contracts$POStatus=="3PRA" & !is.na(contracts$ECMS_BackFromVendor),]
 
+
 ### Export data to spreadsheets
 write.csv(Exec_queue,"O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/Exec counsel queue.csv")
+write.csv(LawKPI,"O:/Projects/ReqtoCheckStat/Query Files/Output/Law KPI.csv")
 write.csv(contracts,"O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/contracts.csv",na="")
 write.csv(narrative,"O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/narrative.csv")
