@@ -2,17 +2,15 @@ This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT 
 
 
 ### Status of ReqtoCheck scripted sections
-* ITI - N/A
-
-* Requisitions - Need to figure out how to isolate max dept approval.
+* Requisitions - Nearly complete, with plotting needed.
 
 * Procurement - Complete, with minor chart format tweaks needed.
 
 * Bids/RFPs/DBEs - Bids and RFPs complete, with minor format tweaks needed.  DBEs in progress.
 
-* Contract reqs - Not started.  Will begin after requisitions are complete.
+* Contract reqs - Data cleaning complete.
 
-* Contract purchase orders - Mostly complete, with aging charts needed.
+* Contract purchase orders - Data cleaning nearly complete.
 
 * Payments - Mostly complete except for dept coding and department-level tables/charts, 
 
