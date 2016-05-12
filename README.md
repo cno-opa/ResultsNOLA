@@ -40,6 +40,7 @@ This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT 
 		* Workflow chart
 		* Aging charts
 		* Approver-level processing
+		* Vendor plot
 	* contract Reqs
 		* Aging charts
 		* Approver-level processing
