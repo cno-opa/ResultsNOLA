@@ -1,6 +1,6 @@
 ## This file runs all requirements and script files needed to put together all scripted sections of ReqtoCheckSTAT and currently assumes computer running the script has access to the OPA share drive. 
 
-.libPaths("C:/Rpackages")
+.libPaths("H:/Rpackages")
 
 # Load required packages
 library(tidyr) # Contracts
@@ -19,7 +19,15 @@ library(bizdays)# Payments and Procurement
 library(scales)
 library(RCurl)
 library(data.table)#### setnames function
+library(readxl)
+library(RODBC)
+library(ggvis)
 
+### Set first and last date of analysis quarter
+r_period<-as.yearqtr(as.Date(Sys.Date())-1)
+last<-as.Date(as.yearqtr(Sys.Date())) - 1
+first<-as.Date(as.yearqtr(last))
+  
 ### Function for reading R files directly from github.com
 source_https <- function(u, unlink.tmp.certs = FALSE) {
   require(RCurl)
@@ -33,7 +41,18 @@ source_https <- function(u, unlink.tmp.certs = FALSE) {
 
 
 ### Create function to calculate days between two dates, with rounding defaulted to the whole number
-Days<-function(df,FirstDt,EndDt,digits=0){
+# Days<-function(df,FirstDt,EndDt,digits=0){
+#   arguments<-as.list(match.call())  
+#   
+#   ### Identify args as dataframe columns
+#   EndDt<-eval(arguments$EndDt,df)
+#   FirstDt<-eval(arguments$FirstDt,df)
+#   
+#   ### Calculate days betweens first date and end date, rounding to the specified number of decimal places, with a default of 0
+#   round((strptime(EndDt,"%Y-%m-%d")-strptime(FirstDt,"%Y-%m-%d"))/86400,digits)
+# }
+
+Days<-function(df,FirstDt,EndDt,digits=1){
   arguments<-as.list(match.call())  
   
   ### Identify args as dataframe columns
@@ -41,8 +60,10 @@ Days<-function(df,FirstDt,EndDt,digits=0){
   FirstDt<-eval(arguments$FirstDt,df)
   
   ### Calculate days betweens first date and end date, rounding to the specified number of decimal places, with a default of 0
-  round((strptime(EndDt,"%Y-%m-%d")-strptime(FirstDt,"%Y-%m-%d"))/86400,digits)
+  round(difftime(as.POSIXct(EndDt),as.POSIXct(FirstDt),units="days"),digits)
 }
+
+
 
 ReqDays<-function(df,FirstDt,EndDt,digits=0){
   arguments<-as.list(match.call())  
