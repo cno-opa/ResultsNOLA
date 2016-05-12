@@ -2,7 +2,7 @@ This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT 
 
 
 ### Scripting to-do's
-* Data importing:
+#### Data importing:
 	* Procurement
 		* Convert csv to SQL script
 	* Bids/RFPs/DBEs
@@ -10,7 +10,7 @@ This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT 
 	* Payments
 		* Convert csv to xlsx
 
-* Data cleaning:
+#### Data cleaning:
 	* Invoice Pipelines
 		* All
 	* Payments
@@ -28,7 +28,7 @@ This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT 
 	* Procurement
 		* Figure out method for determining queue per quarter
 
-* Plotting:
+#### Plotting:
 	* Reqs
 		* Workflow charts
 	* Purchase Orders
@@ -37,6 +37,6 @@ This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT 
 		* Workflow charts
 	* Contracts
 		* Workflow charts
-	*Payments
+	* Payments
 		* Departmental-level 
 
