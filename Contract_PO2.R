@@ -285,12 +285,16 @@ ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Contract POs/Law Distribut
 
 #### Days to execute by type
 Execute_Type<-aggregate(Execute_Days~Close_Qtr+Type2,data=contracts,mean)
-Execute_Type<-subset(Execute_Type,Close_Qtr>"2012 Q4")
-ExecuteType_Plot<-ggplot(Execute_Type,aes(x=factor(Close_Qtr),y=Execute_Days,group=Type2,color=factor(Type2)))+
-                  geom_line(stat="identity",size=1.25)
-print(ExecuteType_Plot)
-#ggsave("./ReqtoCheckSTAT/Query Files/Slides/Contract POs/Execute Type.png")
-
+Execute_Type<-getOneYear(Execute_Type,Close_Qtr,r_period)
+Execute_Type$Execute_Days<-round(Execute_Type$Execute_Days,1)
+ggplot(Execute_Type, aes(x=factor(Close_Qtr), y=Execute_Days, group=Type2, colour=Type2)) +
+  geom_line() +
+  geom_hline(aes(yintercept=30,colour="#FF0000"),linetype=2,size=1)+
+  ggtitle("Days to Execute by Contract Type")+
+  labs(y="Days",x="Quarter")+
+  geom_text(aes(label=ifelse(Close_Qtr==r_period,Type2,""),show_guide=FALSE))+
+  theme(legend.position="none",plot.title=element_text(size=13,face="bold",vjust=1))   
+ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Contract POs/Execute Type.png")
 
 
 #### Create subsets of data for sending to Law and Executive Counsel
