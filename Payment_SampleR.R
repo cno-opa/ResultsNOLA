@@ -36,7 +36,7 @@ Raw_GP$Org_code<-(Raw_GP$Account,10,4)
 #### Filter out rows with duplicate check numbers, and then generate random sample of checks
 Raw_GP<-arrange(Raw_GP,desc(Account))
 Raw_GP<-Raw_GP[!duplicated(Raw_GP$Check),]
-Samp_GP <- Raw_GP[sample(nrow(Raw_GP), 160), ]
+Samp_GP <- Raw_GP[sample(nrow(Raw_GP), 370), ]
 
 #### Write CSV's
 write.csv(Samp_GP,"O:/Projects/ReqtoCheckSTAT/Query Files/Output/Payments/Samp_GP.csv")
