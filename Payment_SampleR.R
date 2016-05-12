@@ -30,8 +30,8 @@ Raw_GP<-Raw_GP[Raw_GP$Vendor!="going places travel, inc",]
 
 #### 
 Raw_GP$Account<-as.character(Raw_GP$Account)
-Raw_GP$Agency_code<-substr(Raw_GP$Account,6,4)
-Raw_GP$Org_code<-substr(Raw_GP$Account,10,4)
+Raw_GP$Agency_code<-substring(Raw_GP$Account,6,4)
+Raw_GP$Org_code<-(Raw_GP$Account,10,4)
 
 #### Filter out rows with duplicate check numbers, and then generate random sample of checks
 Raw_GP<-arrange(Raw_GP,desc(Account))
