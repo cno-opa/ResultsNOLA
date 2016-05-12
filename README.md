@@ -30,13 +30,19 @@ This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT 
 
 #### Plotting:
 	* Reqs
-		* Workflow charts
+		* Workflow chart
 	* Purchase Orders
-		* Workflow charts
+		* Workflow chart
+		* Aging chart
 	* Bids/RFPs
-		* Workflow charts
-	* Contracts
-		* Workflow charts
+		* Workflow chart
+	* Contract POs
+		* Workflow chart
+		* Aging charts
+		* Approver-level processing
+	* contract Reqs
+		* Aging charts
+		* Approver-level processing
 	* Payments
 		* Departmental-level 
 
