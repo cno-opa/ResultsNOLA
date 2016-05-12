@@ -1,27 +1,42 @@
 This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT analyses. ReqtoCheckSTAT reviews City of New Orleans performance data related to contracting out goods and services, from the requisition of budgeted funds to the issuance of a check for goods or services rendered. 
 
 
-### Status of ReqtoCheck scripted sections
-* Requisitions - Nearly complete, with plotting needed.
+### Scripting to-do's
+* Data importing:
+	* Procurement
+		* Convert csv to SQL script
+	* Bids/RFPs/DBEs
+		* convert csv to xlsx
+	* Payments
+		* Convert csv to xlsx
 
-* Procurement - Complete, with minor chart format tweaks needed.
+* Data cleaning:
+	* Invoice Pipelines
+		* All
+	* Payments
+		* Tweak script once read from xlsx file
+		* Departmental-level coding
+	* Reqs
+		* Figure out method for determining queue per quarter
+	* Bids/RFPs/DBEs
+		* Tweak script once read from xlsx file
+		* DBE information
+		* Figure out method for determining queue per quarter
+	* Contract POs
+		* Figure out method for determining age and queue per quarter
+			* At aggregate, as well as approval levels
+	* Procurement
+		* Figure out method for determining queue per quarter
 
-* Bids/RFPs/DBEs - Bids and RFPs complete, with minor format tweaks needed.  DBEs in progress.
+* Plotting:
+	* Reqs
+		* Workflow charts
+	* Purchase Orders
+		* Workflow charts
+	* Bids/RFPs
+		* Workflow charts
+	* Contracts
+		* Workflow charts
+	*Payments
+		* Departmental-level 
 
-* Contract reqs - Data cleaning complete.
-
-* Contract purchase orders - Data cleaning nearly complete.
-
-* Payments - Mostly complete except for dept coding and department-level tables/charts, 
-
-* Invoice Pipelines - Not started
-
-
-###General to-do's:
-* Figure out formulas for automatically determining distribution chart data label heights
-* Figure out function for determining age per quarter
-
-### Instructions for running:
-* Set working directory to OPA share drive
-* Run Main.R
-	* If troubleshooting is needed troubleshooting individual scripts, first run Main.R through to line that sources utility-scripts, and then proceed to script in question.
