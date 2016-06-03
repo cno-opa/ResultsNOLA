@@ -1,7 +1,5 @@
 ## This file runs all requirements and script files needed to put together all scripted sections of ReqtoCheckSTAT and currently assumes computer running the script has access to the OPA share drive. 
 
-.libPaths("H:/Rpackages")
-
 # Load required packages
 library(tidyr) # Contracts
 library(plyr)  # All
@@ -10,7 +8,6 @@ library(lubridate) # All
 library(xlsx) # Contracts
 library(gdata)# Contracts
 library(stringr)# Contracts and payments
-library(r2excel)# Contracts (not sure if needed)
 library(reshape2)# Contracts and procurement
 library(zoo)# All
 library(ggplot2)# All
@@ -86,14 +83,16 @@ Age<-function(df,StartDt,QtrEnd){
 
 
 source_https("https://raw.githubusercontent.com/cno-opa/graphics/master/plotters.R") #### Load OPA theme
-source_https("https://raw.githubusercontent.com/cno-opa/stat-template/master/R/lib/utils.R") 
+#source_https("https://raw.githubusercontent.com/cno-opa/stat-template/master/R/lib/utils.R") 
 source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/NOLA_calendar.R")#### Load calendar for business day calculations
-source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/Multiplot%20function.R") #### Load function allowing for mulitiple graphs in one plot output
-source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/lm_equation.R") #### Load script for displaying Linear regression equation and R-squared on lm plots
+#source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/Multiplot%20function.R") #### Load function allowing for mulitiple graphs in one plot output
+#source_https("https://raw.githubusercontent.com/cno-opa/utility-scripts/master/lm_equation.R") #### Load script for displaying Linear regression equation and R-squared on lm plots
 
 ### Load component scripts
-#source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Reqs.R")
+source("O:/Projects/ReqtoCheckSTAT-scripts/Buyspeed_Queries.R",echo=TRUE)
+source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Reqs2.R")
+source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Contract_Reqs.R")
 source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Procurement.R")
 source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Bids_RFPs_DBEs.R")
-source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Contract_POs.R")
+source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Contract_PO2.R")
 source_https("https://raw.githubusercontent.com/cno-opa/ReqtoCheckSTAT-scripts/master/Payments.R")
