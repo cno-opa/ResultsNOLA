@@ -79,11 +79,11 @@ con_routing<-select(con_routing,-Ord,-Approver)
 con_routing<-select(spread(con_routing,Stage,ApprovalDate),PO,DepAttorney,CAO,SentVendor,ECMS_BackFromVendor,Executive)
 
 ##### Elminate cancelled contracts from header dataframe
-po_header<-po_header[po_header$POStatus!="3PCA"& po_header$POStatus!="3PCR",]
+po_header_con<-po_header_con[po_header_con$POStatus!="3PCA"& po_header_con$POStatus!="3PCR",]
 
 ##### Merge into master file
 #contracts<-rbind(contracts,pre_law_pos)
-contracts<-left_join(po_header,legal_review,by="PO")
+contracts<-left_join(po_header_con,legal_review,by="PO")
 contracts<-left_join(contracts,con_routing, by="PO")
 contracts<-left_join(contracts,po_item,by="PO")
 contracts<-left_join(contracts,vendor,by="Vendor_code")
@@ -180,9 +180,9 @@ contracts$CAO_Days<-round(as.numeric(difftime(as.POSIXct(contracts$CAO),as.POSIX
 
 contracts$Sent_Vendor_Days<-round(as.numeric(difftime(as.POSIXct(contracts$SentVendor),as.POSIXct(contracts$CAO),units="days")),1)
 
-contracts$Awaiting_Vendor_Days<-round(as.numeric(difftime(as.POSIXct(contracts$ECMS_BackFromVendor),as.POSIXct(contracts$SentVendor),units="days")))
+contracts$Awaiting_Vendor_Days<-round(as.numeric(difftime(as.POSIXct(contracts$ECMS_BackFromVendor),as.POSIXct(contracts$SentVendor),units="days")),1)
 
-contracts$Executive_Signature_Days<-round(as.numeric(difftime(as.POSIXct(contracts$Close_Date),as.POSIXct(contracts$ECMS_BackFromVendor),units="days"))
+contracts$Executive_Signature_Days<-round(as.numeric(difftime(as.POSIXct(contracts$Close_Date),as.POSIXct(contracts$ECMS_BackFromVendor),units="days")),1)
 
 contracts$Executive_Days<-ifelse(!is.na(contracts$AdjustedSignDate) & !is.na(contracts$Executive)
                                           ,round(as.numeric(difftime(as.POSIXct(contracts$Executive),as.POSIXct(contracts$Close_Date),units="days")),1)
@@ -236,8 +236,8 @@ con_PO_dist<-select(contracts,Close_Qtr,Under30,Between31_60,Between61_90,Betwee
 con_PO_dist<-aggregate(cbind(con_PO_dist$Under30,con_PO_dist$Between31_60,con_PO_dist$Between61_90,con_PO_dist$Between91_120,con_PO_dist$Over120)~Close_Qtr,data=con_PO_dist,FUN=sum);colnames(con_PO_dist)[grepl("V1", colnames(con_PO_dist))] <- "<=30";colnames(con_PO_dist)[grepl("V2", colnames(con_PO_dist))] <- "31-60";colnames(con_PO_dist)[grepl("V3", colnames(con_PO_dist))] <- "61-90";colnames(con_PO_dist)[grepl("V4", colnames(con_PO_dist))] <- "91-120";colnames(con_PO_dist)[grepl("V5", colnames(con_PO_dist))] <- ">120"
 con_PO_dist<-subset(con_PO_dist,Close_Qtr>"2012 Q2")
 con_PO_dist<-melt(con_PO_dist,id.vars="Close_Qtr",variable.name="Days")
-con_PO_dist<-con_PO_dist %>% group_by(Close_Qtr, Days) %>% 
-  summarise(value = sum(value)) %>%   # Within each quarter, sum all values in each bin of days
+con_PO_dist<-con_PO_dist %>% group_by(Close_Qtr, Days)%>% 
+  summarise(con_PO_dist,value = sum(value))%>%   # Within each quarter, sum all values in each bin of days
   mutate(percent = value/sum(value),
          pos = cumsum(percent) - 0.5*percent)
 ##### Generate plot
@@ -282,18 +282,17 @@ print(Law_plot)
 ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Contract POs/Law Distribution.png")
 
 
-
 #### Days to execute by type
 Execute_Type<-aggregate(Execute_Days~Close_Qtr+Type2,data=contracts,mean)
 Execute_Type<-getOneYear(Execute_Type,Close_Qtr,r_period)
 Execute_Type$Execute_Days<-round(Execute_Type$Execute_Days,1)
-ggplot(Execute_Type, aes(x=factor(Close_Qtr), y=Execute_Days, group=Type2, colour=Type2)) +
+print(ggplot(Execute_Type, aes(x=factor(Close_Qtr), y=Execute_Days, group=Type2, colour=Type2)) +
   geom_line() +
   geom_hline(aes(yintercept=30,colour="#FF0000"),linetype=2,size=1)+
   ggtitle("Days to Execute by Contract Type")+
   labs(y="Days",x="Quarter")+
   geom_text(aes(label=ifelse(Close_Qtr==r_period,Type2,""),show_guide=FALSE))+
-  theme(legend.position="none",plot.title=element_text(size=13,face="bold",vjust=1))   
+  theme(legend.position="none",plot.title=element_text(size=13,face="bold",vjust=1)))
 ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Contract POs/Execute Type.png")
 
 
@@ -302,8 +301,9 @@ ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Contract POs/Execute Type.
 open_contracts<-contracts[is.na(contracts$Close_Qtr)|contracts$Close_Qtr>as.yearqtr(last),]
 closed_contracts<-contracts[contracts$Close_Qtr<=as.yearqtr(last),]
 
-##### 
-Exec_queue<-contracts[is.na(contracts$Executive) & contracts$POStatus=="3PRA" & !is.na(contracts$ECMS_BackFromVendor),]
+##### Executive Counsel queue to send 
+Exec_queue<-select(contracts[is.na(contracts$Executive) & contracts$POStatus=="3PRA" & !is.na(contracts$ECMS_BackFromVendor),]
+                   , PO, AltID, Dept, Vendor, Description, ECMS_BackFromVendor) 
 
 
 ### Export data to spreadsheets
