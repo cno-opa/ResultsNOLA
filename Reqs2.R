@@ -76,8 +76,7 @@ Reqs<-left_join(Reqs,approval_paths,by="Dept_code")
 
 
 ##### Remove cancelled requisitions, as those returned to department for resubmission from dataset
-Reqs<-Reqs[Reqs$ReqStatus!="1RC",]
-Reqs<-Reqs[Reqs$ReqStatus!="1RR",]
+Reqs<-Reqs[Reqs$ReqStatus!="1RC"| Reqs$ReqStatus!="1RR",]
 
 ##### Code each req into quarters based on the date of final approval by Finance
 Reqs$First_Qtr<-as.yearqtr(Reqs$Request_Date)
