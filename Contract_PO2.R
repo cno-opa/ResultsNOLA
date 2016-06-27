@@ -237,19 +237,19 @@ con_PO_dist<-aggregate(cbind(con_PO_dist$Under30,con_PO_dist$Between31_60,con_PO
 con_PO_dist<-subset(con_PO_dist,Close_Qtr>"2012 Q2")
 con_PO_dist<-melt(con_PO_dist,id.vars="Close_Qtr",variable.name="Days")
 con_PO_dist<-con_PO_dist %>% group_by(Close_Qtr, Days)%>% 
-  summarise(con_PO_dist,value = sum(value))%>%   # Within each quarter, sum all values in each bin of days
+  dplyr::summarise(value = sum(value))%>%   # Within each quarter, sum all values in each bin of days
   mutate(percent = value/sum(value),
          pos = cumsum(percent) - 0.5*percent)
 ##### Generate plot
 Execute_dist_plot<-ggplot(con_PO_dist, aes(x=factor(Close_Qtr),y=percent, fill=Days)) +
   geom_bar(stat='identity',  width = .7, colour="black", lwd=0.1) +
   geom_text(aes(label=ifelse(percent >= 0.01, paste0(sprintf("%.0f", percent*100),"%"),""),
-                y=pos), colour="black",size=4) +
+                y=pos), colour="black",size=2) +
   scale_y_continuous(labels = percent_format()) +
   scale_fill_manual(values=c("#009900","#FFFFCC","#FFCC99","#FF9999","#FF3300"))+
   labs(y="Distribution", x="Quarter")+
   ggtitle("Distribution of Days to Execute (Non-Ordinance)")+
-  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))
+  theme(plot.title=element_text(size=12,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25,size=7))
 print(Execute_dist_plot)
 ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Contract POs/Execute Distribution.png")
 
@@ -272,27 +272,27 @@ LawKPI<-LawKPI %>% group_by(Close_Qtr, Days) %>%
 Law_plot<-ggplot(LawKPI, aes(x=factor(Close_Qtr),y=percent, fill=Days)) +
   geom_bar(stat='identity',  width = .7, colour="black", lwd=0.1) +
   geom_text(aes(label=ifelse(percent >= 0.01, paste0(sprintf("%.0f", percent*100),"%"),""),
-                y=pos), colour="black",size=4) +
+                y=pos), colour="black",size=2) +
   scale_y_continuous(labels = percent_format()) +
   scale_fill_manual(values=c("#009900","#FFCC99","#FF9999"))+
   labs(y="Distribution", x="Quarter")+
   ggtitle("Days to Review and Approve by Law Dept")+
-  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))   
+  theme(plot.title=element_text(size=12,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))   
 print(Law_plot)
 ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Contract POs/Law Distribution.png")
 
 
 #### Days to execute by type
 Execute_Type<-aggregate(Execute_Days~Close_Qtr+Type2,data=contracts,mean)
-Execute_Type<-getOneYear(Execute_Type,Close_Qtr,r_period)
+Execute_Type<-getOneYear(Execute_Type,Close_Qtr,first) ### Take last 5 quarters using custom "getOneYear" function
 Execute_Type$Execute_Days<-round(Execute_Type$Execute_Days,1)
 print(ggplot(Execute_Type, aes(x=factor(Close_Qtr), y=Execute_Days, group=Type2, colour=Type2)) +
   geom_line() +
   geom_hline(aes(yintercept=30,colour="#FF0000"),linetype=2,size=1)+
   ggtitle("Days to Execute by Contract Type")+
   labs(y="Days",x="Quarter")+
-  geom_text(aes(label=ifelse(Close_Qtr==r_period,Type2,""),show_guide=FALSE))+
-  theme(legend.position="none",plot.title=element_text(size=13,face="bold",vjust=1)))
+  geom_text(aes(label=ifelse(Close_Qtr==r_period,Type2,""),size=2,show_guide=FALSE))+
+  theme(legend.position="none",plot.title=element_text(size=10,face="bold",vjust=1)))
 ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Contract POs/Execute Type.png")
 
 
