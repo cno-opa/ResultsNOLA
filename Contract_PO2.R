@@ -194,6 +194,35 @@ contracts$Executive_Days<-ifelse(!is.na(contracts$AdjustedSignDate) & !is.na(con
 ordinance<-contracts[contracts$Ordinance==1,]
 contracts<-anti_join(contracts,ordinance,by="PO")
 
+##### Create dataframes of contracts that have been signed, as well as those that were open at the end of the quarter
+open_contracts<-select(contracts[is.na(contracts$Close_Qtr)|contracts$Close_Qtr>as.yearqtr(last),])
+closed_contracts<-contracts[contracts$Close_Qtr<=as.yearqtr(last),]
+
+##### Calculate days in current stage of contracts that are open as of the last day of the reporting period
+open_contracts$Legal_Age<-ifelse(!is.na(open_contracts$ContractDate) & is.na(open_contracts$LegalReview),
+                                 round(as.numeric(difftime(as.POSIXct(last),as.POSIXct(open_contracts$ContractDate),units="days")),1),
+                                 NA)
+
+open_contracts$DepAttorney_Age<-ifelse(!is.na(open_contracts$LegalReview) & is.na(open_contracts$DepAttorney),
+                                 round(as.numeric(difftime(as.POSIXct(last),as.POSIXct(open_contracts$LegalReview),units="days")),1),
+                                 NA)
+
+open_contracts$CAO_Age<-ifelse(!is.na(open_contracts$DepAttorney) & is.na(open_contracts$CAO),
+                                       round(as.numeric(difftime(as.POSIXct(last),as.POSIXct(open_contracts$DepAttorney),units="days")),1),
+                                       NA)
+
+open_contracts$SendVendor_Age<-ifelse(!is.na(open_contracts$CAO) & is.na(open_contracts$SentVendor),
+                               round(as.numeric(difftime(as.POSIXct(last),as.POSIXct(open_contracts$CAO),units="days")),1),
+                               NA)
+
+open_contracts$AwaitingVendor_Age<-ifelse(!is.na(open_contracts$SentVendor) & is.na(open_contracts$ECMS_BackFromVendor),
+                               round(as.numeric(difftime(as.POSIXct(last),as.POSIXct(open_contracts$SentVendor),units="days")),1),
+                               NA)
+
+open_contracts$Executive_Age<-ifelse(!is.na(open_contracts$ECMS_BackFromVendor) & is.na(open_contracts$Close_Date),
+                                          round(as.numeric(difftime(as.POSIXct(last),as.POSIXct(open_contracts$ECMS_BackFromVendor),units="days")),1),
+                                          NA)
+
 
 ### Plotting
 
@@ -253,6 +282,46 @@ Execute_dist_plot<-ggplot(con_PO_dist, aes(x=factor(Close_Qtr),y=percent, fill=D
 print(Execute_dist_plot)
 ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Contract POs/Execute Distribution.png")
 
+##### Create days per stage for executed contracts
+Stages<-subset(closed_contracts,Close_Qtr>"2012 Q4")
+Stages<-melt(select(Stages,PO,Close_Qtr,Legal_Days:Executive_Signature_Days),id.var=c("PO","Close_Qtr"),variable.name="Stage",value.name="Days_in_Stage")
+Stages$Days_in_Stage<-as.numeric(Stages$Days_in_Stage)
+Stages<- aggregate(Days_in_Stage ~ Close_Qtr + Stage, data = Stages, mean)
+levels(Stages$Stage)[levels(Stages$Stage)=="Legal_Days"]<-"Legal Review"
+levels(Stages$Stage)[levels(Stages$Stage)=="Dep_Attorney_Days"]<-"Dep. City Attorney"
+levels(Stages$Stage)[levels(Stages$Stage)=="CAO_Days"]<-"CAO"
+levels(Stages$Stage)[levels(Stages$Stage)=="Sent_Vendor_Days"]<-"Sent Vendor"
+levels(Stages$Stage)[levels(Stages$Stage)=="Awaiting_Vendor"]<-"Days with Vendor"
+levels(Stages$Stage)[levels(Stages$Stage)=="Executive_Signature_Days"]<-"Executed"
+Stage_plot<-ggplot(Stages,aes(x=factor(Close_Qtr),y=Days_in_Stage,group=1))+
+  geom_bar(stat="identity",fill=darkBlue,size=0.6)+
+  facet_grid(facets=.~Stage)+
+  ggtitle("Average Days per Stage for Executed Contracts 2013-Present")+
+  xlab("Quarters")+ylab("Days")+
+  theme(strip.text.x=element_text(size=8),
+        axis.text.x=element_blank(),plot.title=element_text(size=13,face="bold",vjust=1))
+print(Stage_plot)
+ggsave("O:/Projects/ReqtoCheckSTAT/Query Files/Slides/Contract POs/Closed Contracts by Stage.png")
+
+
+Ages<-melt(select(open_contracts,PO,Legal_Days:Executive_Signature_Days),id.var="PO",variable.name="Stage",value.name="Age_in_Stage")
+Ages$Age_in_Stage<-as.numeric(Ages$Age_in_Stage)
+Ages<- aggregate(Age_in_Stage ~ Stage, data = Ages, mean)
+levels(Ages$Age)[levels(Ages$Age)=="Legal_Age"]<-"Legal Review"
+levels(Ages$Age)[levels(Ages$Age)=="DepAttorney_Age"]<-"Dep. City Attorney"
+levels(Ages$Age)[levels(Ages$Age)=="CAO_Age"]<-"CAO"
+levels(Ages$Age)[levels(Ages$Age)=="SendVendor_Age"]<-"Send to Vendor"
+levels(Ages$Age)[levels(Ages$Age)=="AwaitingVendor_Age"]<-"Awaiting Vendor"
+levels(Ages$Age)[levels(Ages$Age)=="Executive_Age"]<-"Awaiting Executive"
+Age_plot<-ggplot(Ages,y=Days_in_Age)+
+  geom_bar(stat="identity",fill=darkBlue,size=0.6)+
+  facet_grid(facets=.~Age)+
+  ggtitle("Average Age of Open Contracts by Age")+
+  xlab("Quarters")+ylab("Days")+
+  theme(strip.text.x=element_text(size=8),
+        axis.text.x=element_blank(),plot.title=element_text(size=13,face="bold",vjust=1))
+print(Age_plot)
+ggsave("O:/Projects/ReqtoCheckSTAT/Query Files/Slides/Contract POs/Open Contracts by Stage.png")
 
 
 #### Law KPI calculation
@@ -299,22 +368,20 @@ ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Contract POs/Execute Type.
 
 ### Data exporting
 
-#### Create subsets of data for sending to Law and Executive Counsel
-##### Create dataframes of contracts that have been signed, as well as those that were open at the end of the quarter
-open_contracts<-select(contracts[is.na(contracts$Close_Qtr)|contracts$Close_Qtr>as.yearqtr(last),])
-closed_contracts<-contracts[contracts$Close_Qtr<=as.yearqtr(last),]
-
-
 ##### Create subsetted open contracts list for snapshots to send to Law, Executive Counsel, and Property Mgmt
 
-###### Contracts Awaiting Vendor (according to ECMS)
-Awaiting_Vendor<-open_contracts[is.na(open_contracts$Executive) & !is.na(open_contracts$ECMS_BackFromVendor) & open_contracts$POStatus=="3PRA",]
+###### Contracts Awaiting Vendor (according to ECMS) 
+Awaiting_Vendor<-select(open_contracts[is.na(open_contracts$Executive) & !is.na(open_contracts$ECMS_BackFromVendor) & open_contracts$POStatus=="3PRA",]
+                  ,PO,AltID,Dept,Vendor,Description,Requestor,Purchaser,SentVendor)
+write.csv(Awaiting_Vendor,"O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/Awaiting Vendor.csv")
 
-###### Create snapshot of what was awaiting the Mayor's signature at Executive Counsel 
+###### Create and snapshot of what was awaiting Executive signature (mainly, but not limited to the Mayor's signature at Executive Counsel) 
 Executive_queue<-select(open_contracts[is.na(open_contracts$Executive) & !is.na(open_contracts$ECMS_BackFromVendor) & open_contracts$POStatus=="3PRA",]
-                   , PO, AltID, Dept,Vendor, Description, Requestor,Purchaser ,ECMS_BackFromVendor) 
+                   ,PO, AltID, Dept,Vendor, Description, Requestor,Purchaser ,ECMS_BackFromVendor,AdjustedSignDate) 
+write.csv(Executive_queue,"O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/Executive Counsel Queue.csv")
 
-##### Snapshot for Law and Executive Counsel 
+
+##### Snapshot of opened and closed contracts for Law and Executive Counsel 
 wb <- loadWorkbook("O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/Quarterly Contracts.xlsx") ## load existing contract spreadsheet
 sheets <- getSheets(wb) ### assign object with names of excel tabs in sheet (not needed, but good to have)
 removeSheet(wb, sheetName="Open Contracts") ## remove old open contracts tab
@@ -333,7 +400,6 @@ open_ordinance<-select(ordinance[!is.na(ordinance$PO) & is.na(ordinance$Close_Qt
 
 closed_ordinance<-select(ordinance[!is.na(ordinance$PO) & ordinance$Close_Qtr==r_period,],
                          PO,AltID,Req,Dept_code,Dept,Vendor,ContractDate,LegalReview,DepAttorney,CAO,SentVendor,ECMS_BackFromVendor,Executive)
-
 wb2 <- loadWorkbook("O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/Ordinances.xlsx") ## load existing ordinance spreadsheet
 sheets1 <- getSheets(wb2) ### assign object with names of excel tabs in sheet (not needed, but good to have)
 removeSheet(wb2, sheetName="Open Ordinances") ## remove old open ordinances tab
@@ -343,6 +409,7 @@ yourSheet4 <- createSheet(wb2, sheetName="Closed Ordinances") ## initialize new 
 addDataFrame(open_ordinance,row.names=FALSE,yourSheet3,showNA=FALSE) ###
 addDataFrame(closed_ordinance,row.names=FALSE,yourSheet4,showNA=FALSE)
 saveWorkbook(wb2, "O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/Ordinances.xlsx") ## Save spreadsheet
+
 
 #### Miscellaneous data exports
 write.csv(LawKPI,"O:/Projects/ReqtoCheckStat/Query Files/Output/Law KPI.csv")
