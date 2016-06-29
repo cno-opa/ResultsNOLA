@@ -296,18 +296,54 @@ print(ggplot(Execute_Type, aes(x=factor(Close_Qtr), y=Execute_Days, group=Type2,
 ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Contract POs/Execute Type.png")
 
 
+
+### Data exporting
+
 #### Create subsets of data for sending to Law and Executive Counsel
 ##### Create dataframes of contracts that have been signed, as well as those that were open at the end of the quarter
-open_contracts<-contracts[is.na(contracts$Close_Qtr)|contracts$Close_Qtr>as.yearqtr(last),]
+open_contracts<-select(contracts[is.na(contracts$Close_Qtr)|contracts$Close_Qtr>as.yearqtr(last),])
 closed_contracts<-contracts[contracts$Close_Qtr<=as.yearqtr(last),]
 
-##### Executive Counsel queue to send 
-Exec_queue<-select(contracts[is.na(contracts$Executive) & contracts$POStatus=="3PRA" & !is.na(contracts$ECMS_BackFromVendor),]
-                   , PO, AltID, Dept, Vendor, Description, ECMS_BackFromVendor) 
 
+##### Create subsetted open contracts list for snapshots to send to Law, Executive Counsel, and Property Mgmt
 
-### Export data to spreadsheets
-write.csv(Exec_queue,"O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/Exec counsel queue.csv")
+###### Contracts Awaiting Vendor (according to ECMS)
+Awaiting_Vendor<-open_contracts[is.na(open_contracts$Executive) & !is.na(open_contracts$ECMS_BackFromVendor) & open_contracts$POStatus=="3PRA",]
+
+###### Create snapshot of what was awaiting the Mayor's signature at Executive Counsel 
+Executive_queue<-select(open_contracts[is.na(open_contracts$Executive) & !is.na(open_contracts$ECMS_BackFromVendor) & open_contracts$POStatus=="3PRA",]
+                   , PO, AltID, Dept,Vendor, Description, Requestor,Purchaser ,ECMS_BackFromVendor) 
+
+##### Snapshot for Law and Executive Counsel 
+wb <- loadWorkbook("O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/Quarterly Contracts.xlsx") ## load existing contract spreadsheet
+sheets <- getSheets(wb) ### assign object with names of excel tabs in sheet (not needed, but good to have)
+removeSheet(wb, sheetName="Open Contracts") ## remove old open contracts tab
+removeSheet(wb, sheetName="Closed Contracts") ## remove old closed contracts tab
+yourSheet <- createSheet(wb, sheetName="Open Contracts") ## initialize new open contracts tab
+yourSheet1 <- createSheet(wb, sheetName="Closed Contracts") ## initialize new closed contracts tab
+addDataFrame(select(open_contracts,PO,AltID,Req,Dept_code,Dept,Vendor,Description,Type2,Requestor,Purchaser,
+                    ContractDate,LegalReview,DepAttorney,CAO,SentVendor,ECMS_BackFromVendor,Executive,AdjustedSignDate), yourSheet, row.names=FALSE,showNA=FALSE) ## subset open contracts list and add to excel sheet
+addDataFrame(select(closed_contracts[closed_contracts$Close_Qtr==r_period & !is.na(closed_contracts$PO),],PO,AltID,Req,Dept_code,Dept,Vendor,Description,Type2,Requestor,Purchaser,
+                    ContractDate,LegalReview,DepAttorney,CAO,SentVendor,ECMS_BackFromVendor,Executive,AdjustedSignDate,Close_Date), yourSheet1, row.names=FALSE,showNA=FALSE) ## subset closed contracts list and add to excel sheet
+saveWorkbook(wb, "O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/Quarterly Contracts.xlsx") ## Save spreadsheet
+
+###### Contracts requiring a City Council Ordinance (Send to Law and Property Mgmt)
+open_ordinance<-select(ordinance[!is.na(ordinance$PO) & is.na(ordinance$Close_Qtr),],
+                       PO,AltID,Req,Dept_code,Dept,Vendor,ContractDate,LegalReview,DepAttorney,CAO,SentVendor,ECMS_BackFromVendor,Executive)
+
+closed_ordinance<-select(ordinance[!is.na(ordinance$PO) & ordinance$Close_Qtr==r_period,],
+                         PO,AltID,Req,Dept_code,Dept,Vendor,ContractDate,LegalReview,DepAttorney,CAO,SentVendor,ECMS_BackFromVendor,Executive)
+
+wb2 <- loadWorkbook("O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/Ordinances.xlsx") ## load existing ordinance spreadsheet
+sheets1 <- getSheets(wb2) ### assign object with names of excel tabs in sheet (not needed, but good to have)
+removeSheet(wb2, sheetName="Open Ordinances") ## remove old open ordinances tab
+removeSheet(wb2, sheetName="Closed Ordinances") ## remove old closed ordinances tab
+yourSheet3 <- createSheet(wb2, sheetName="Open Ordinances") ## initialize new open ordinances tab
+yourSheet4 <- createSheet(wb2, sheetName="Closed Ordinances") ## initialize new closed ordinances tab
+addDataFrame(open_ordinance,row.names=FALSE,yourSheet3,showNA=FALSE) ###
+addDataFrame(closed_ordinance,row.names=FALSE,yourSheet4,showNA=FALSE)
+saveWorkbook(wb2, "O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/Ordinances.xlsx") ## Save spreadsheet
+
+#### Miscellaneous data exports
 write.csv(LawKPI,"O:/Projects/ReqtoCheckStat/Query Files/Output/Law KPI.csv")
-write.csv(contracts,"O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/contracts.csv",na="")
 write.csv(narrative,"O:/Projects/ReqtoCheckStat/Query Files/Output/Contract POs/narrative.csv")
