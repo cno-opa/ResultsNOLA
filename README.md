@@ -1,6 +1,5 @@
 This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT analyses. ReqtoCheckSTAT reviews City of New Orleans performance data related to contracting out goods and services, from the requisition of budgeted funds to the issuance of a check for goods or services rendered. 
 
-
 ### Scripting to-do's
 #### Data importing:
 	* Procurement
@@ -46,4 +45,7 @@ This repository consists of the scripts to compile the quarterly ReqtoCheckSTAT 
 		* Approver-level processing
 	* Payments
 		* Departmental-level 
-
+    
+#### Looming operational/management changes that may necessitate script tweaks
+ * Jeff Hebert will likely assume the ECMS approval responsibilities of Andy Kopplin, and therefore, such logic should be built into the contract processing scripts (see PO_APPROVER and REQ_APPROVER variables).
+ * Property Management contracts that require a City Council Ordinance will get their own ECMS approval process.  The "APPROVAL_PATH_ID" variable will likely be key.
