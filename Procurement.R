@@ -2,7 +2,7 @@
 
 ### Read, clean, and format data files
 headings<-c("Dept","Req","FinanceDate","POnumber","POdate","Cost","Vendor","PrintDate","BuyerInitials","Buyer","WorkingDays")
-POs<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/ProcurementReqProcessing.csv",col.names=headings,stringsAsFactors=FALSE,skip=3)
+POs1<-read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/ProcurementReqProcessing.csv",col.names=headings,stringsAsFactors=FALSE,skip=3)
 ReqStatus<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Req Status.csv",skip=3),Req=REQ_NBR,Status=STATUS)
 #Category<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/PObyCategory.csv",skip=3),Req=REQ_NBR,Descr=DESC_LONG)
 
@@ -10,7 +10,7 @@ ReqStatus<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Req Status.cs
 ### Data cleaning
 
 #### Standardize req number variables in two data sets
-POs<-merge(POs,ReqStatus,by="Req",all.x=TRUE)
+POs<-merge(POs1,ReqStatus,by="Req",all.x=TRUE)
 #Reqs<-merge(Reqs,Category,by="Req",all.x=TRUE)
 
 #### Convert dollar amount column to numeric class for readability
