@@ -76,8 +76,7 @@ r_period<-max(POs$Qtr)
 POs$Buyer2<-ifelse(POs$Buyer=="Bernice Ealy","Ealy",
                     ifelse(POs$Buyer=="Kai Wells","Wells",
                            ifelse(POs$Buyer=="Burma Jackson","Jackson",
-                                  ifelse(POs$Buyer=="Stephanie Warren","Warren",
-                                         ifelse(POs$Buyer=="Thersa C Kendrick","Kendrick",NA)))))
+                                  ifelse(POs$Buyer=="Stephanie Warren","Warren",NA))))
 Buyers<-aggregate(WorkingDays~Qtr+Buyer2,data=POs,mean);Buyers$WorkingDays<-round(Buyers$WorkingDays,2)
 Buyers<-subset(Buyers,Qtr>"2012 Q4")
 Buyer_Plot<-ggplot(Buyers,aes(x=factor(Qtr),y=WorkingDays,group=Buyer2,color=factor(Buyer2)))+
