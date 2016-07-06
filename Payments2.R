@@ -23,7 +23,7 @@ Payments<-Payments[as.Date(Payments$AP_Process_Date)<=last,]
 Payments$Qtr<-as.yearqtr(Payments$AP_Process_Date)
 
 
-### calculate business days from Department Buyspeed receipt to Buyspeed approval by Accounts Payable staff
+### calculate business days from department Buyspeed receipt to final Buyspeed approval by Accounts Payable staff
 Payments$APWorkingDays<-bizdays(as.Date(as.character(Payments$ReceiptDate),"%Y-%m-%d %H:%M:%S"),as.Date(as.character(Payments$AP_Process_Date),"%Y-%m-%d %H:%M:%S"),NOLA_calendar)
 Payments$APWorkingDays<-Payments$APWorkingDays+1 ##### Adjust calculation up one day, as bizdays function calculates 1 less day than Excel's parallel formula, networkdays 
 
@@ -36,7 +36,7 @@ Payments$APOver14<-ifelse(Payments$APWorkingDays>14,1,0)
 
 ### Plotting
 
-#### Plot days to payment
+#### Plot days to process by Accounts Payable
 Days2Payment<-cbind(aggregate(data=Payments,APWorkingDays~Qtr,FUN=mean),select(aggregate(data=Payments,Invoice~Qtr,FUN=length),-Qtr,Count=Invoice))                    
 Payment_plot<-ggplot(Days2Payment,aes(x=factor(Qtr),y=APWorkingDays))+
   geom_bar(stat="identity",fill="steelblue")+
@@ -48,7 +48,8 @@ Payment_plot<-ggplot(Days2Payment,aes(x=factor(Qtr),y=APWorkingDays))+
 print(Payment_plot)
 ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Payments/Buyspeed Days to Payment.png")
 
-####
+
+#### Plot distribution of days to process by Accounts Payable
 APdist<-select(Payments,Qtr,APUnder7,AP7_14,APOver14)
 APdist<-aggregate(cbind(APdist$APUnder7,APdist$AP7_14,APdist$APOver14)~Qtr,data=APdist,FUN=sum);colnames(APdist)[grepl("V1", colnames(APdist))] <- "Under7";colnames(APdist)[grepl("V2", colnames(APdist))] <- "Between7_14";colnames(APdist)[grepl("V3", colnames(APdist))] <- "Over14"
 APdist<-melt(APdist,id.vars="Qtr",variable.name="Days")
