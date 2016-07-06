@@ -2,7 +2,7 @@
 ### measuring the time between most recent "receipt" created in Buyspeed by a department,
 ### and the final approval by an Accounts Payable staffer in Buyspeed
 
-#### Create consolidated payment data set
+#### Create consolidated Buyspeed payment dataset
 Payments<-Invoice%>%
           left_join(Receipt,by="PO")
 
@@ -13,6 +13,7 @@ Payments<-group_by(Payments,Invoice)%>%
 ### De-duplicate payments to only include the most recent departmental receipt date
 Payments<-Payments[!duplicated(Payments$Invoice),]
 
+### Remove payments for which the Accounts Payable approval was after dept receipt date
 Payments<-Payments[Payments$ReceiptDate<=Payments$AP_Process_Date,]
 
 #### Subset for payments made after the reporting period and before 2013
