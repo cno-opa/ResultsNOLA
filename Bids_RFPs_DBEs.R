@@ -1,9 +1,7 @@
 # Bids, RFPs, and DBE data
 
 ## Read DBE dataset and Bids/RFPs data from share drive
-#setInternet2(TRUE)
-#download.file("https://data.nola.gov/api/views/8xef-4m72/rows.csv?accessType=DOWNLOAD","O:/Projects/ReqtoCheckStat/Query Files/DBE.csv")
-DBE<-read.csv("O:/Projects/ReqtoCheckStat/Query Files/DBE.csv")  
+#DBE<-read.csv("O:/Projects/ReqtoCheckStat/Query Files/DBE.csv")  
 Bids_RFPs<-read.csv("O:/Projects/ReqtoCheckStat/Query Files/Bids_RFPs.csv")
 
 ### Data cleaning
@@ -98,40 +96,3 @@ ggplot(RFP_dist, aes(x=factor(Qtr),y=percent, fill=Days)) +
   theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))
 ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Bids-RFPs-DBEs/RFP Distribution.png")
 
-############################################################################################################################
-
-## Clean data and create linear regression model on the effects of the number of bid/RFP responses on contract value, 
-##as compiled from Purchasing and Supplier Diversity (UNDER CONSTRUCTION)
-
-###
-#Bids_RFP_lm<-select(Bids_RFPs,Number,Responses)
-
-###
-#BidValues<-merge(DBE,Bids_RFP_lm,by="Number",all=TRUE)
-
-### 
-#BidValues<-filter(BidValues,!is.na(Responses))
-
-### Coerce contract value variable into numeric class
-#BidValues$Estimated_Contract_Value<-gsub("\\$","",BidValues$Estimated_Contract_Value)
-#class(BidValues$Estimated_Contract_Value)<-"numeric"
-
-### Plot bids
-#BidValues<-select(BidResponse,Number,Value=Estimated_Contract_Value,Responses)
-#BidValues<-filter(BidValues,!is.na(Value))
-#BidValues$Val_log<-log(BidValues$Value)
-
-### Create regression plot
-#Bidvalue_plot<-ggplot(BidValues,aes(x=Val_log,y=Responses))+
-#  geom_point(shape=1)+
- # geom_smooth(method=lm,
-#              se=TRUE)+
-#  ggtitle("Regression of the effect of the Number of Responses on Contract Values")+
-#  facet_grid(facets=.~Stage)+
-#  geom_text(x=16,y=10,label=lm_eqn(lm(Value~Responses,BidValues)),parse=TRUE)+ ### lm_eqn is a custom function that adds regression equation and Rsquared to plot
-#  xlab("Contract Value(log)")+ylab("Responses")
-#print(Bidvalue_plot)
-#ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Bids-RFPs-DBEs/BidResponse-ContractValue Regression.png")
-
-### Create linear regression model of the effect of the number of responses on the estimated contract value
-#Bid_Model<-lm(Value~Responses,BidValues)
