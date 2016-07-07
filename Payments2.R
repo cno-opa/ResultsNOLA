@@ -1,4 +1,4 @@
-### This is an alternative script to analyze payment processing at Accounts Payable, 
+### This is a script to analyze general fund payment processing at Accounts Payable, 
 ### measuring the time between most recent "receipt" created in Buyspeed by a department,
 ### and the final approval by an Accounts Payable staffer in Buyspeed
 
