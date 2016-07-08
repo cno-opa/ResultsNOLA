@@ -127,10 +127,10 @@ levels(conReq_Stages$Stage)[levels(conReq_Stages$Stage)=="OSD_Days"]<-"OSD"
 levels(conReq_Stages$Stage)[levels(conReq_Stages$Stage)=="Finance_Days"]<-"Finance"
 levels(conReq_Stages$Stage)[levels(conReq_Stages$Stage)=="Civil_Service_Days"]<-"Civil Service"
 levels(conReq_Stages$Stage)[levels(conReq_Stages$Stage)=="CAODays"]<-"CAO"
-conReq_Stage_plot<-ggplot(conReq_Stages,aes(x=factor(Close_Qtr),y=Days_in_Stage,group=1))+
+conReq_Stage_plot<-ggplot(conReq_Stages,aes(x=factor(Close_Qtr),label=ifelse(Close_Qtr==r_period,Days_in_Stage,""),y=Days_in_Stage,group=1))+
   geom_bar(stat="identity",fill=darkBlue,size=0.6)+
   facet_grid(facets=.~Stage)+
-  ggtitle("Average Days per Stage for Executed Contracts 2013-Present")+
+  ggtitle("Average Days to Approve Contract Requisitions")+
   xlab("Quarters")+ylab("Days")+
   theme(strip.text.x=element_text(size=8),
         axis.text.x=element_text(angle=90,hjust=0.25,size=9),plot.title=element_text(size=13,face="bold",vjust=1))
