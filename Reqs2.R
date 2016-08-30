@@ -115,7 +115,7 @@ Days2Req_plot<-ggplot(Days2Req,aes(x = factor(Close_Qtr), y = value,fill = varia
   geom_bar(position = "stack",stat = "identity") +
   ggtitle("Days to Approve General Fund Requisitions")+
   xlab("Quarters")+ylab("Days")+
-  geom_hline(aes(yintercept=2,colour="#FF0000"),linetype=2,size=1)+
+  #geom_hline(aes(yintercept=2,colour="#FF0000"),linetype=2,size=1)+
   scale_fill_manual(values=c(darkBlue,lightBlue) ,name=" ",labels=c("Budget","Finance"))+
   theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))
 print(Days2Req_plot)
