@@ -1,0 +1,644 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+##Setup  
+
+
+
+```{r}
+library(devtools) #### for source_url function in Main.R
+library(tidyr) # Contracts
+library(plyr)  # May still be used
+library(dplyr) # All
+library(lubridate) # All
+# library(xlsx) # Contracts
+library(stringr)# Contracts and payments narrative
+library(reshape2)# Contracts and procurement
+library(zoo)# All (for as.yearqtr class)
+library(ggplot2)# All
+library(bizdays)# For business day processing
+# library(scales) # Not sure if this is needed anymore
+# library(RCurl) # Not sure this is needed anymore
+# library(data.table)#### setnames function (not sure if needed)
+library(readxl) ### Reading in Adjustments.xlsx
+library(RODBC) ### Needed for SQL queries
+library(feather)
+
+source_url("https://raw.githubusercontent.com/cno-opa/graphics/master/plotters.R") 
+
+
+NOLA_calendar<-create.calendar(holidays=c("2011-1-3","2011-1-17","2011-12-25","2011-11-26","2011-3-8","2011-4-22","2011-9-5","2011-5-30","2011-7-4",
+                                      "2012-1-2", "2012-1-16",  "2012-2-21",	"2012-4-6",	"2012-5-28",	"2012-7-4",	"2012-9-3",	"2012-11-22",	"2012-11-23",	"2012-12-25",	
+                                          "2013-1-1",	"2013-1-21",	"2013-2-12",	"2013-3-29",	"2013-5-27",	"2013-7-4",	"2013-9-2",	"2013-11-28",	"2013-11-29",	"2013-12-25",	
+                                                "2014-1-1",	"2014-1-20",	"2014-3-4",	"2014-4-18",	"2014-5-26",	"2014-7-4",	"2014-9-1",	"2014-11-27",	"2014-11-28",	"2014-12-25",	
+                                                    "2015-1-1",	"2015-1-19",	"2015-2-17",	"2015-4-3",	"2015-5-25",	"2015-7-3",	"2015-9-7",	"2015-11-26",	"2015-11-27",	"2015-12-25",
+                                                    "2016-1-18","2016-2-9","2016-3-25","2016-5-30","2016-7-4", "2016-9-5", "2016-11-24","2016-11-25","2016-12-26"),
+                        start.date="2011-1-1",end.date="2016-12-31",
+                        name="NOLA_calendar",
+                        weekdays=c("saturday","sunday"),)
+```
+
+###Dates
+```{r}
+r_period<-as.yearqtr(as.Date(Sys.Date())-1)
+last<- as.Date(as.yearqtr(r_period)+0.25)-1
+```
+
+
+###Refeathering
+
+####configs  
+
+```{r}
+configs <- c(BS_routing = "select Req=REQ_NBR, Approver=REQ_APPROVER, Request_Date=REQ_REQ_APP_DATE,                 
+                              ApprovalDate=APPROVAL_DATE,Ord=ORDER_SEQUENCE, Path_ID=APPROVAL_PATH_ID
+                              from REQ_ROUTING
+                              where ORG_ID= '1000'
+                              and ReQ_REQ_APP_DATE >= Convert(datetime,'2011-1-1')", 
+             BS_item =  "select Req=REQ_NBR, Bid=BID_NBR, PO=PO_ID, Class=CLASS_PRIMARY, NIGP=CLASS_ITEM, Vendor_code=RECOMMENDED_VENDOR_NBR
+                          from REQ_ITEM",
+             BS = "select Req=REQ_NBR ,Dept_code=LOC_ID,  Org=DEPT_NBR_SUFFIX , Req_Amount=EST_COST, CreationDate=ENTERED_DATE,	    
+                      Description=SHORT_DESC, ReqStatus=CURRENT_HDR_STATUS, StatusDate=DATE_LAST_UPDATED,Purchaser=PURCHASER_USER_ID, 
+                      Requestor=REQUESTOR_ID
+                      from REQ
+                      where	ORG_ID='1000'",
+             vendor =  "select Vendor_code=VENDOR_NBR,  Vendor=NAME,	Vendor_type=VENDOR_DESCRIPTION
+                          from VENDOR",
+             approval_paths = "select Dept_code=APPROVAL_PATH_ID,  Dept=DESC_TEXT
+                                  from APPROVAL_PATHS",
+             Invoice = "select PO=PO_NBR, Invoice=INVOICE_NBR, Vendor_code=VENDOR_NBR, AP_Process_Date=DATE_APPROVED, Approver=USER_APPROVED, 
+                          Amount=INVOICE_AMT 
+                          FROM INVOICE_HDR
+                          where PAYMENT_DATE>= Convert(datetime,'2013-1-1')
+                          and INVOICE_STATUS = '4IP'",
+             Receipt = "select PO=PO_NBR, Receipt=RECEIPT_ID, ORG_CODE=DEPT_NBR_PREFIX,Description=SHORT_DESC, ReceiptDate=DATE_LAST_UPDATED
+                            from RECEIPT_HEADER
+                            where CURRENT_HDR_STATUS = '5CA'
+                            and DATE_LAST_UPDATED >= Convert(datetime,'2011-1-1')"
+             
+             ) %>% 
+  data.frame(Query = ., 
+             stringsAsFactors = FALSE) %>%
+  mutate(Name = row.names(.), 
+         FeatherFilePath = paste("feathers/",
+                                   Name,
+                                   ".feather",
+                                   sep = ""))
+
+
+
+```
+
+
+```{r}
+refeather <- function(query,
+                      connection,
+                      feather_path)
+{
+  print(query)
+  fresh_data <- sqlQuery(connection, query) 
+  
+  fresh_data %>%
+    write_feather(feather_path)
+}
+
+
+
+loadDataset <- function(dataset_name,
+                        refresh_feather = FALSE)
+{
+  config <- configs %>% 
+    filter(Name == dataset_name) 
+  
+  if (refresh_feather == TRUE | file.exists(config$FeatherFilePath) == FALSE)
+  {
+    
+    connector <- odbcDriverConnect(connection="Driver={SQL Server};
+                            server=cno-sqlreport01;database=Buyspeed;
+                            trusted_connection=yes;")
+
+    refeather(config$Query,
+              connector,
+              config$FeatherFilePath
+              )
+    
+    close(connector)
+  } 
+  
+  read_feather(config$FeatherFilePath) %>%
+    return()
+}
+
+```
+
+
+
+
+
+
+
+
+##Budget  
+
+
+###Setup  
+
+####Datasets
+```{r, eval=FALSE}
+###Read in data
+BS_routing <- loadDataset("BS_routing") 
+
+BS_item <- loadDataset("BS_item") %>%
+  mutate(Req = as.integer(as.character(Req)))
+
+BS <- loadDataset("BS")  %>%
+  mutate(Req = as.integer(as.character(Req)))
+
+vendor <-  loadDataset("vendor")
+approval_paths <-  loadDataset("approval_paths")
+```
+
+
+
+###Script  
+
+```{r, eval=FALSE}
+Reqs<-BS_routing[!is.na(BS_routing$ApprovalDate),]
+
+#### Subset data for reqs from 2011 to current reporting period
+Reqs<-filter(Reqs,Request_Date>"2010-12-31")
+Reqs<-Reqs[as.Date(Reqs$Request_Date)<=last,]
+
+#### Clean path ID column to identify if the approver is at the departmental, Budget, or Finance level
+Reqs<-Reqs[!is.na(Reqs$Path_ID),]
+Reqs$Path_ID<-ifelse(Reqs$Path_ID=="BUDGET","Budget",
+                     ifelse(Reqs$Path_ID=="FINANCE","Finance","Dept"))
+
+#### Save request dates as separate data frame
+Request<-select(Reqs,Req,Request_Date)
+Request<-Request[!duplicated(Request$Req),]
+
+#### Departmental subset cleaning
+##### Create separate dataframe of department approvals and take only the latest approval date
+Dept_reqs<-Reqs[Reqs$Path_ID=="Dept",]
+Dept_reqs<-arrange(Dept_reqs,desc(ApprovalDate))
+Dept_reqs<-Dept_reqs[!duplicated(Dept_reqs$Req),]
+Dept_reqs<-select(Dept_reqs,-Approver,-Ord,-Path_ID)
+
+#### Re-name approval date column for departmental data frame
+names(Dept_reqs)[names(Dept_reqs)=="ApprovalDate"]<-"Department"
+
+
+#### Budget and Finance cleaning
+##### Remove departmental approvals from main dataset
+Reqs<-Reqs[Reqs$Path_ID!="Dept",]
+Reqs<-select(Reqs,-Ord,-Approver,-Request_Date)
+Reqs<-spread(Reqs,Path_ID,ApprovalDate)
+
+
+
+#### Master dataset cleaning
+##### Re-join department data frame with Budget and Finance approvals
+Reqs<-left_join(Reqs,Request,by="Req")
+Reqs<-full_join(Reqs,Dept_reqs,by="Req")
+
+##### Consolidate request date column into one
+Reqs[,"Request_Date"]<-NULL
+
+
+Reqs <- Reqs %>%
+  mutate(Request_Date.x = as.POSIXct(Request_Date.x),
+         Request_Date.y = as.POSIXct(Request_Date.y),
+         Request_Date = if_else(is.na(Request_Date.x) == TRUE, 
+                               Request_Date.y, 
+                               Request_Date.x))
+
+
+##### Drop .x and .y request columns, and rearrange column order
+Reqs<-select(Reqs,Req,Request_Date,Department,Budget,Finance)
+```
+
+
+
+```{r, eval=FALSE}
+#####Select needed columns from Buyspeed item table
+Req_item<-select(BS_item,Req,Bid,PO,Vendor_code)
+Req_item<-Req_item[!duplicated(Req_item$Req),]
+
+##### Merge cleaned dataset with other needed Buyspeed tables
+Reqs<-left_join(Reqs,BS,by="Req") %>%
+  left_join(Req_item,by="Req") %>%
+  left_join(vendor,by="Vendor_code") %>%
+  left_join(approval_paths,by="Dept_code")
+
+
+##### Remove cancelled requisitions, as those returned to department for resubmission from dataset
+Reqs<-Reqs[Reqs$ReqStatus!="1RC"| Reqs$ReqStatus!="1RR",]
+
+##### Code each req into quarters based on the date of final approval by Finance
+Reqs$First_Qtr<-as.yearqtr(Reqs$Request_Date)
+Reqs$Close_Qtr<-as.yearqtr(Reqs$Finance)
+
+##### Calculate days per stage
+Reqs$Budget_Days<-ifelse(!is.na(Reqs$Department),
+                        round(as.numeric(difftime(as.POSIXct(Reqs$Budget),as.POSIXct(Reqs$Department),units="days")),2),
+                        round(as.numeric(difftime(as.POSIXct(Reqs$Budget),as.POSIXct(Reqs$Request_Date),units="days")),2))
+Reqs$Finance_Days<-round(as.numeric(difftime(as.POSIXct(Reqs$Finance),as.POSIXct(Reqs$Budget),units="days")),2)
+
+##### Calculate total days from final departmental approval to Finance approval
+Reqs$Total_Days<-ifelse(!is.na(Reqs$Department),
+                        round(as.numeric(difftime(as.POSIXct(Reqs$Finance),as.POSIXct(Reqs$Department),units="days")),2),
+                        round(as.numeric(difftime(as.POSIXct(Reqs$Finance),as.POSIXct(Reqs$Request_Date),units="days")),2))
+   
+#### Aggregate quarterly counts and averages for days to Budget and Finance approval
+Budget_KPI<-cbind(aggregate(data=Reqs,Budget_Days~Close_Qtr,FUN=mean),select(aggregate(data=Reqs,Budget_Days~Close_Qtr,FUN=length),-Close_Qtr,Count=Budget_Days))                    
+Finance_Days<-cbind(aggregate(data=Reqs,Finance_Days~Close_Qtr,FUN=mean),select(aggregate(data=Reqs,Finance_Days~Close_Qtr,FUN=length),-Close_Qtr,Count=Finance_Days))                    
+
+#### Aggregate total days to approval
+Days2Req<-select(cbind(Budget_KPI,select(Finance_Days,-Close_Qtr,-Count)),Close_Qtr,Count,Budget_Days,Finance_Days)
+
+
+
+### Plotting
+#### Drop incomplete quarters (assumption of at least 2,500 per quarter)
+Days2Req<-filter(Days2Req,Days2Req$Count>2000)
+
+#### Plot days to approval requisitions
+Days2Req<-select(Days2Req,Close_Qtr,Budget_Days,Finance_Days)
+
+Days2Req<-melt(Days2Req,id.vars="Close_Qtr")
+
+Days2Req_plot<-ggplot(Days2Req,aes(x = factor(Close_Qtr), y = value,fill = variable)) +
+  geom_bar(position = "stack",stat = "identity") +
+  ggtitle("Days to Approve General Fund Requisitions")+
+  xlab("Quarters")+ylab("Days")+
+  geom_hline(aes(yintercept=2,colour="#FF0000"),linetype=2,size=1)+
+  scale_fill_manual(values=c(darkBlue,lightBlue) ,name=" ",labels=c("Budget","Finance"))+
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))
+print(Days2Req_plot)
+ggsave("Days to Req.png")
+
+
+##### Write out datasets
+write.csv(Budget_KPI,"Budget Reqs.csv") ### Budget KPIs
+write.csv(Reqs,"Reqs.csv")
+```
+
+##Finance  
+
+
+
+###Setup
+
+```{r, eval=FALSE}
+Invoice <-  loadDataset("Invoice")
+Receipt <- loadDataset("Receipt")
+```
+
+###GFInvoices
+```{r, eval=FALSE}
+### This is a script to analyze general fund payment processing at Accounts Payable, 
+### measuring the time between most recent "receipt" created in Buyspeed by a department,
+### and the final approval by an Accounts Payable staffer in Buyspeed
+
+#### Create consolidated Buyspeed payment dataset
+Payments<-Invoice%>%
+          left_join(Receipt,by="PO")
+
+#### Group payment data by invoice number, and sort so the most recent department receipt date is at the top
+Payments<-group_by(Payments,Invoice)%>%
+  arrange(desc(ReceiptDate))
+
+### De-duplicate payments to only include the most recent departmental receipt date
+Payments<-Payments[!duplicated(Payments$Invoice),]
+
+### Remove payments for which the Accounts Payable approval was after dept receipt date
+Payments<-Payments[Payments$ReceiptDate<=Payments$AP_Process_Date,]
+
+#### Subset for payments made after the reporting period and before 2013
+Payments<-filter(Payments,AP_Process_Date>"2012-12-31")
+Payments<-Payments[as.Date(Payments$AP_Process_Date)<=last,]
+
+### Code quarter variable based on date of Accounts Payable processing
+Payments$Qtr<-as.yearqtr(Payments$AP_Process_Date)
+
+
+### calculate business days from department Buyspeed receipt to final Buyspeed approval by Accounts Payable staff
+Payments$APWorkingDays<-bizdays(as.Date(as.character(Payments$ReceiptDate),"%Y-%m-%d %H:%M:%S"),as.Date(as.character(Payments$AP_Process_Date),"%Y-%m-%d %H:%M:%S"),NOLA_calendar)
+Payments$APWorkingDays<-Payments$APWorkingDays+1 ##### Adjust calculation up one day, as bizdays function calculates 1 less day than Excel's parallel formula, networkdays 
+
+#### Segment AP processing days into bins
+Payments$APUnder7<-ifelse(Payments$APWorkingDays<=7,1,0)
+Payments$AP7_14<-ifelse(Payments$APWorkingDays>7 & Payments$APWorkingDays<=14,1,0)
+Payments$APOver14<-ifelse(Payments$APWorkingDays>14,1,0)
+
+
+
+### Plotting
+Payments <- Payments %>% 
+  filter(Qtr != '2017 Q1')
+#### Plot days to process by Accounts Payable
+APWorkingDays <- aggregate(data=Payments,
+                           APWorkingDays~Qtr,
+                           FUN=mean) 
+
+second_one <- select(aggregate(data=Payments,
+                                      Invoice~Qtr,
+                                      FUN=length),
+                     -Qtr,
+                            Count=Invoice) %>%
+  
+Days2Payment<- APWorkingDays %>%
+  cbind(second_one[1:16,]) 
+Payment_plot<-ggplot(Days2Payment,aes(x=factor(Qtr),y=APWorkingDays))+
+  geom_bar(stat="identity",fill="steelblue")+
+  ggtitle("Average Business Days to Process General Fund Payments by Accounts Payable")+
+  xlab("Quarters")+ylab("Business Days")+
+  geom_text(aes(y=APWorkingDays,ymax=APWorkingDays,label=round(APWorkingDays,2)),position=position_dodge(width=0.9),vjust=-.5,size=4)+
+  #geom_hline(aes(yintercept=7,colour="#FF0000"),linetype=2,size=1)+
+  theme(plot.title=element_text(size=11,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))   
+print(Payment_plot)
+ggsave("Buyspeed Days to Payment.png")
+
+
+#### Plot distribution of days to process by Accounts Payable
+APdist<-select(Payments,Qtr,APUnder7,AP7_14,APOver14)
+APdist<-aggregate(cbind(APdist$APUnder7,APdist$AP7_14,APdist$APOver14)~Qtr,data=APdist,FUN=sum);colnames(APdist)[grepl("V1", colnames(APdist))] <- "Under7";colnames(APdist)[grepl("V2", colnames(APdist))] <- "Between7_14";colnames(APdist)[grepl("V3", colnames(APdist))] <- "Over14"
+APdist<-melt(APdist,id.vars="Qtr",variable.name="Days")
+APdist<-APdist %>% group_by(Qtr, Days) %>% 
+  summarise(value = sum(value)) %>%   # Within each quarter, sum all values in each bin of days
+  mutate(percent = value/sum(value),
+         pos = cumsum(percent) - 0.5*percent)
+##### Generate plot
+ggplot(APdist, aes(x=factor(Qtr),y=percent, fill=Days)) +
+  geom_bar(stat='identity',  width = .7, colour="black", lwd=0.1) +
+  geom_text(aes(label=ifelse(percent >= 0.01, paste0(sprintf("%.0f", percent*100),"%"),""),
+                y=pos), colour="black",size=3) +
+  scale_y_continuous(labels = percent_format()) +
+  scale_fill_manual(values=c("#009900","#FFFFCC","#FFCC99","#FF9999","#FF3300"))+
+  labs(y="Distribution", x="Quarter")+
+  ggtitle("Accounts Payable Processing (Business Days) \n - General Fund/Agency")+
+  theme(plot.title=element_text(size=13,face="bold"),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))
+ggsave("Buyspeed AP Distribution.png")
+
+write.csv(APdist,"Accounts Payable.csv")
+
+```
+
+
+
+
+###Capital/Grants Fund  
+
+```{r}
+### Import data
+GP<-read.csv("O:/Projects/ReqtoCheckStat/Query Files/Great Plains master.csv") ### "General Fund" data collected from Great Plains
+AFIN<-select(read.csv("O:/Projects/ReqtoCheckStat/Query Files/AFIN master.csv"),Check,Fund,PV,Department,Vendor,InvoiceDate,StampDate,APDate,CheckDate,Amount) ### "Capital/Grant Fund" data collected from AFIN
+#Orgs<-select(read.csv("O:/Projects/ReqtoCheckStat/Query Files/Org Codes.csv"),Org_code=Segment.ID,Org_desc=Description)
+#Agencies<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/Agency Codes.csv"),Agency_code=Segment.ID,Agency_desc=Description)
+
+
+### Data cleaning
+
+#### Parse Great Plains Purchase Order numbers to be consistent with BuySpeed
+GP$Vendor<-gsub("\\/.*","",x=GP$Vendor)
+GP$Purchase.Order.Number<-gsub("\\:.*","",x=GP$Purchase.Order.Number)
+
+#### Trim white space from beginning of Great Plains department column, and convert to lower-case
+trim <- function (x) gsub("^\\s+|\\s+$", "", x)
+GP$Department<-trim(GP$Department)
+GP$Account.String<-trim(GP$Account.String)
+GP$Department<-tolower(GP$Department)
+
+#### Convert relevant columns into date format
+GP$Check.Date<-as.Date(GP$Check.Date,format="%m/%d/%Y")
+GP$Invoice.Date<-as.Date(GP$Invoice.Date,format="%m/%d/%Y")
+GP$Accounts.Payable.Date<-as.Date(GP$Accounts.Payable.Date,format="%m/%d/%Y")
+GP$Stamp.Date<-as.Date(GP$Stamp.Date,format="%m/%d/%Y")
+AFIN$CheckDate<-as.Date(AFIN$CheckDate,format="%m/%d/%Y")
+AFIN$InvoiceDate<-as.Date(AFIN$InvoiceDate,format="%m/%d/%Y")
+AFIN$APDate<-as.Date(AFIN$APDate,format="%m/%d/%Y")
+AFIN$StampDate<-as.Date(AFIN$StampDate,format="%m/%d/%Y")
+
+#### Code accounts payable date to same as check date, if missing
+GP$Accounts.Payable.Date<-ifelse(GP$Accounts.Payable.Date>GP$Check.Date,GP$Check.Date,GP$Accounts.Payable.Date);class(GP$Accounts.Payable.Date)<-"Date"
+AFIN$APDate<-ifelse(AFIN$APDate>AFIN$CheckDate,AFIN$CheckDate,AFIN$APDate);class(AFIN$APDate)<-"Date"
+
+#### Calculate business days to process checks by Accounts Payable
+GP$AP<-bizdays(GP$Accounts.Payable.Date,GP$Check.Date,NOLA_calendar)
+GP$AP<-GP$AP+1
+AFIN$AP<-bizdays(AFIN$APDate,AFIN$CheckDate,NOLA_calendar)
+AFIN$AP<-AFIN$AP+1
+
+#### Calculate total days from invoice date (or stamp date, if applicable) to check date
+GP$TotalDays<-ifelse(is.na(GP$Stamp.Date),bizdays(GP$Invoice.Date,GP$Check.Date),bizdays(GP$Stamp.Date,GP$Check.Date))
+GP$TotalDays<-ifelse(GP$TotalDays<0,0,GP$TotalDays) ### Adjust any payments with a check date prior to invoice date to 0 days
+AFIN$TotalDays<-ifelse(is.na(AFIN$StampDate),bizdays(AFIN$InvoiceDate,AFIN$CheckDate),bizdays(AFIN$StampDate,AFIN$CheckDate))
+AFIN$TotalDays<-ifelse(AFIN$TotalDays<0,0,AFIN$TotalDays) ### Adjust any payments with a check date prior to invoice date to 0 days
+
+#### Segment payments into quarters
+GP$Qtr<-as.yearqtr(GP$Check.Date,format="%Y-%m-%d")
+AFIN$Qtr<-as.yearqtr(AFIN$CheckDate,format="%Y-%m-%d")
+
+
+#### Recode account string to generate department variable
+
+##### Extract agency and org codes from the five-segment accounting string for each transaction
+#GP$Agency_code<-substr(GP$Account.String,6,9); GP$Agency_code<-ifelse(startsWith(GP$Agency_code,"0"),substr(GP$Agency_code,2,4),GP$Agency_code)
+#GP$Org_code<-substr(GP$Account.String,11,14)
+
+##### Trim extraneous characters and white space from agency and org codes in master dataset, as well as codebook datasets
+#Agencies$Agency_code<-trim(Agencies$Agency_code)
+#Orgs$Org_codes<-trim(Orgs$Org_code)
+#GP[c("Agency_code","Org_code")]<-lapply(GP[c("Agency_code","Org_code")], trim)
+
+##### 
+#GP$Agency<-ifelse(GP$Agency_code %in% Agencies$Agency_code, as.character(Agencies$Agency_desc),NA)
+#GP$Org<-ifelse(GP$Org_code %in% Orgs$Org_code, as.character(Orgs$Org_desc),NA)
+#GP$Dept<-paste(as.character(GP$Agency)," - ",as.character(GP$Org))
+
+               
+#### Select desired columns
+GP<-select(GP,Check=Check..,PO=Purchase.Order.Number,
+    Account.String,Department,Invoice.Date,Stamp.Date,
+    Accounts.Payable.Date,Check.Date,Vendor,Amount,AP,TotalDays,Qtr)
+
+#### Create distribution bins for Accounts Payable business days and calendar days from invoice to check
+GP$APUnder7<-ifelse(GP$AP<=7,1,0)
+    GP$AP7_14<-ifelse(GP$AP>7 & GP$AP<=14,1,0)
+        GP$APOver14<-ifelse(GP$AP>14,1,0)
+GP$TotalUnder30<-ifelse(GP$TotalDays<=30,1,0)
+    GP$Total31_60<-ifelse(GP$TotalDays>30 & GP$TotalDays<=60,1,0)
+        GP$Total61_90<-ifelse(GP$TotalDays>60 & GP$TotalDays<=90,1,0)
+            GP$Total91_120<-ifelse(GP$TotalDays>90 & GP$TotalDays<=120,1,0)
+                GP$TotalOver120<-ifelse(GP$TotalDays>120,1,0)
+AFIN$APUnder7<-ifelse(AFIN$AP<=7,1,0)
+    AFIN$AP7_14<-ifelse(AFIN$AP>7 & AFIN$AP<=14,1,0)
+        AFIN$APOver14<-ifelse(AFIN$AP>14,1,0)
+AFIN$TotalUnder45<-ifelse(AFIN$TotalDays<=45,1,0)
+    AFIN$Total46_90<-ifelse(AFIN$TotalDays>45 & AFIN$TotalDays<=90,1,0)
+        AFIN$Total91_135<-ifelse(AFIN$TotalDays>90 & AFIN$TotalDays<=135,1,0)
+          AFIN$TotalOver135<-ifelse(AFIN$TotalDays>135,1,0)
+
+
+
+### Plotting: Accounts Payable business days
+
+#### Plot business days to process by Accounts Payable
+GF_AP_Days<-aggregate(data=GP,AP~Qtr,FUN=mean)
+GF_AP_Dayplot<-ggplot(GF_AP_Days,aes(x=factor(Qtr),y=AP))+
+    geom_bar(stat="identity",fill="steelblue")+
+      ggtitle("Business Days to Process General Fund \n Payments by Accounts Payable")+
+        xlab("Quarters")+ylab("Business Days")+
+          geom_text(aes(y=AP,ymax=AP+1,label=round(AP,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)+
+            geom_hline(aes(yintercept=7,colour="#FF0000"),linetype=2,size=1)+
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25,face="bold"))   
+print(GF_AP_Dayplot)
+ggsave("finance/General Fund AP Days.png")
+
+#### Plot business days to process by Accounts Payable
+CG_AP_Days<-aggregate(data=AFIN,AP~Qtr,FUN=mean)
+CG_AP_Dayplot<-ggplot(CG_AP_Days,aes(x=factor(Qtr),y=AP))+
+    geom_bar(stat="identity",fill="steelblue")+
+      ggtitle("Business Days to Process Capital/Grant \n Payments by Accounts Payable")+
+        xlab("Quarters")+ylab("Business Days")+
+          geom_text(aes(y=AP,ymax=AP+1,label=round(AP,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)+
+            geom_hline(aes(yintercept=7,colour="#FF0000"),linetype=2,size=1)+
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25,face="bold"))   
+print(CG_AP_Dayplot)
+ggsave("finance/Capital-Grant AP Days.png")
+
+
+
+### Plotting: Accounts Payable distributions
+
+#### Plot the distribution percentages of business days to process general fund payments by quarter
+GF_APdist<-select(GP,Qtr,APUnder7,AP7_14,APOver14)
+GF_APdist<-aggregate(cbind(GF_APdist$APUnder7,GF_APdist$AP7_14,GF_APdist$APOver14)~Qtr,data=GF_APdist,FUN=sum);colnames(GF_APdist)[grepl("V1", colnames(GF_APdist))] <- "Under7";colnames(GF_APdist)[grepl("V2", colnames(GF_APdist))] <- "Between7_14";colnames(GF_APdist)[grepl("V3", colnames(GF_APdist))] <- "Over14"
+GF_APdist<-melt(GF_APdist,id.vars="Qtr",variable.name="Days")
+GF_APdist<-GF_APdist %>% group_by(Qtr, Days) %>% 
+  summarise(value = sum(value)) %>%   # Within each quarter, sum all values in each bin of days
+  mutate(percent = value/sum(value),
+         pos = cumsum(percent) - 0.5*percent)
+##### Generate plot
+ggplot(GF_APdist, aes(x=factor(Qtr),y=percent, fill=Days)) +
+  geom_bar(stat='identity',  width = .7, colour="black", lwd=0.1) +
+  geom_text(aes(label=ifelse(percent >= 0.01, paste0(sprintf("%.0f", percent*100),"%"),""),
+                y=pos), colour="black",size=4) +
+  scale_y_continuous(labels = percent_format()) +
+  scale_fill_manual(values=c("#009900","#FFFFCC","#FFCC99","#FF9999","#FF3300"))+
+  labs(y="Distribution", x="Quarter")+
+  ggtitle("Accounts Payable Processing (Business Days) \n - General Fund/Agency")+
+  theme(plot.title=element_text(size=13,face="bold"),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))
+ggsave("finance/Gen Fund AP Distribution.png")
+
+
+#### Plot the distribution percentages of business days to process general fund payments by quarter
+CG_APdist<-select(AFIN,Qtr,APUnder7,AP7_14,APOver14)
+CG_APdist<-aggregate(cbind(CG_APdist$APUnder7,CG_APdist$AP7_14,CG_APdist$APOver14)~Qtr,data=CG_APdist,FUN=sum);colnames(CG_APdist)[grepl("V1", colnames(CG_APdist))] <- "<=7";colnames(CG_APdist)[grepl("V2", colnames(CG_APdist))] <- "8-14";colnames(CG_APdist)[grepl("V3", colnames(CG_APdist))] <- ">14"
+CG_APdist<-melt(CG_APdist,id.vars="Qtr",variable.name="Days")
+CG_APdist<-CG_APdist %>% group_by(Qtr, Days) %>% 
+  summarise(value = sum(value)) %>%   # Within each quarter, sum all values in each bin of days
+  mutate(percent = value/sum(value),
+         pos = cumsum(percent) - 0.5*percent)
+##### Generate plot
+ggplot(CG_APdist, aes(x=factor(Qtr),y=percent, fill=Days)) +
+  geom_bar(stat='identity',  width = .7, colour="black", lwd=0.1) +
+  geom_text(aes(label=ifelse(percent >= 0.01, paste0(sprintf("%.0f", percent*100),"%"),""),
+                y=pos), colour="black",size=4) +
+  scale_y_continuous(labels = percent_format()) +
+  scale_fill_manual(values=c("#009900","#FFFFCC","#FFCC99","#FF9999","#FF3300"))+
+  labs(y="Distribution", x="Quarter")+
+  ggtitle("Accounts Payable Processing (Business Days) \n - Capital/Grants")+
+  theme(plot.title=element_text(size=13,face="bold"),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))
+ggsave("finance/Capital AP Distribution.png")
+
+
+
+### Plotting: Days from Invoice to Check
+
+#### Plot average days from invoice date to check date
+GF_Check_Days<-aggregate(data=GP,TotalDays~Qtr,FUN=mean)
+GF_Check_Dayplot<-ggplot(GF_Check_Days,aes(x=factor(Qtr),y=TotalDays))+
+  geom_bar(stat="identity",fill="steelblue")+
+    ggtitle("Days from Vendor Request to Check \n - General Fund")+
+      xlab("Quarters")+ylab("Days")+
+        geom_text(aes(y=TotalDays,ymax=TotalDays+1,label=round(TotalDays,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)+
+          geom_hline(aes(yintercept=30,colour="#FF0000"),linetype=2,size=1)+
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25,face="bold"))   
+print(GF_Check_Dayplot)
+ggsave("finance/Gen Fund Request to Check Days.png")
+
+#### Plot average days from invoice date to check date for Capital/Grant payments
+CG_Check<-aggregate(data=AFIN,TotalDays~Qtr,FUN=mean)
+CG_Checkplot<-ggplot(CG_Check,aes(x=factor(Qtr),y=TotalDays))+
+  geom_bar(stat="identity",fill="steelblue")+
+    ggtitle("Days from Vendor Request to Check \n - Capital/Grant")+
+      xlab("Quarters")+ylab("Days")+
+        geom_text(aes(y=TotalDays,ymax=TotalDays+1,label=round(TotalDays,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)+
+          geom_hline(aes(yintercept=45,colour="#FF0000"),linetype=2,size=1)+
+  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25,face="bold"))   
+print(CG_Checkplot)
+ggsave("finance/AFIN Invoice to Check Days.png")
+
+
+### Plotting: Days from Invoice to Check distributions
+
+#### Plot the distribution percentages of days from invoice to check
+GF_dist<-select(GP,Qtr,TotalUnder30,Total31_60,Total61_90,Total91_120,TotalOver120)
+GF_dist<-aggregate(cbind(GF_dist$TotalUnder30,GF_dist$Total31_60,GF_dist$Total61_90,GF_dist$Total91_120,GF_dist$TotalOver120)~Qtr,data=GF_dist,FUN=sum)
+    colnames(GF_dist)[grepl("V1", colnames(GF_dist))] <- "<=30"
+        colnames(GF_dist)[grepl("V2", colnames(GF_dist))] <- "31_60"
+            colnames(GF_dist)[grepl("V3", colnames(GF_dist))] <- "61_90"
+                colnames(GF_dist)[grepl("V4", colnames(GF_dist))] <- "91_120"
+                   colnames(GF_dist)[grepl("V5", colnames(GF_dist))] <- ">120"
+#GF_dist<-select(GF_dist,Qtr,TotalUnder30,Total31_60,Total61_90,Total91_120,TotalOver120)
+GF_dist<-melt(GF_dist,id.vars="Qtr",variable.name="Days")
+GF_dist<-GF_dist %>% group_by(Qtr, Days) %>% 
+  summarise(value = sum(value)) %>%   # Within each quarter, sum all values in each bin of days
+  mutate(percent = value/sum(value),
+         pos = cumsum(percent) - 0.5*percent)
+##### Generate plot
+ggplot(GF_dist, aes(x=factor(Qtr),y=percent, fill=Days)) +
+  geom_bar(stat='identity',  width = .7, colour="black", lwd=0.1) +
+  geom_text(aes(label=ifelse(percent >= 0.01, paste0(sprintf("%.0f", percent*100),"%"),""),
+                y=pos), colour="black",size=4) +
+  scale_y_continuous(labels = percent_format()) +
+  scale_fill_manual(values=c("#009900","#FFFFCC","#FFCC99","#FF9999","#FF3300"))+
+  labs(y="Distribution", x="Quarter")+
+  ggtitle("Days from Request Date to Check Date \n - General Fund/Agency")+
+  theme(plot.title=element_text(size=13,face="bold"),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))
+ggsave("finance/General Payment Dist.png")
+
+#### Plot the distribution percentages of days from invoice to check
+CG_dist<-select(AFIN,Qtr,TotalUnder45,Total46_90,Total91_135,TotalOver135)
+CG_dist<-aggregate(cbind(CG_dist$TotalUnder45,CG_dist$Total46_90,CG_dist$Total91_135,CG_dist$TotalOver135)~Qtr,data=CG_dist,FUN=sum)
+  colnames(CG_dist)[grepl("V1", colnames(CG_dist))] <- "TotalUnder45"
+    colnames(CG_dist)[grepl("V2", colnames(CG_dist))] <- "Total46_90"
+      colnames(CG_dist)[grepl("V3", colnames(CG_dist))] <- "Total91_135"
+          colnames(CG_dist)[grepl("V4", colnames(CG_dist))] <- "TotalOver135"
+CG_dist<-melt(CG_dist,id.vars="Qtr",variable.name="Days")
+CG_dist<-CG_dist %>% group_by(Qtr, Days) %>% 
+  summarise(value = sum(value)) %>%   # Within each quarter, sum all values in each bin of days
+  mutate(percent = value/sum(value),
+         pos = cumsum(percent) - 0.5*percent)
+##### Generate plot
+ggplot(CG_dist, aes(x=factor(Qtr),y=percent, fill=Days)) +
+  geom_bar(stat='identity',  width = .7, colour="black", lwd=0.1) +
+  geom_text(aes(label=ifelse(percent >= 0.01, paste0(sprintf("%.0f", percent*100),"%"),""),
+                y=pos), colour="black",size=4) +
+  scale_y_continuous(labels = percent_format()) +
+  scale_fill_manual(values=c("#009900","#FFCC99","#FF9999","#FF3300"))+
+  labs(y="Distribution", x="Quarter")+
+  ggtitle("Days from Request Date to Check Date \n - Capital/Grant")+
+  theme(plot.title=element_text(size=13,face="bold"),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))
+ggsave("finance/Capital Payment Dist.png")
+
+
+### Export cleaned datasets
+write.csv(GP,"finance/Great Plains.csv")
+write.csv(AFIN,"finance/AFIN.csv")
+
+```

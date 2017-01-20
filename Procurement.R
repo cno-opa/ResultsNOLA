@@ -44,8 +44,8 @@ Purchasing<-ggplot(Days2PO,aes(x=factor(Qtr),y=WorkingDays))+
       ggtitle("Average Business Days to Process Purchase Orders")+
           xlab("Quarters")+ylab("Business Days")+
               geom_text(aes(y=WorkingDays,ymax=WorkingDays,label=round(WorkingDays,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)+
-                geom_hline(aes(yintercept=4,colour="#FF0000"),linetype=2,size=1)+
-                  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))   
+                #geom_hline(aes(yintercept=4,colour="#FF0000"),linetype=2,size=1)+
+                  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=90,hjust=0.25))   
 print(Purchasing)
 ggsave("O:/Projects/ReqtoCheckStat/Query Files/Slides/Procurement/Days to PO.png")
 
