@@ -49,3 +49,4 @@ Purchasing<-ggplot(Days2PO,aes(x=factor(Qtr),y=WorkingDays))+
 print(Purchasing)
 ggsave("Procurement/Days to PO.png")
 
+write.csv(Days2PO,"Procurement/Days to PO.csv")

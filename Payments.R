@@ -41,7 +41,7 @@ AFIN$AP<-bizdays(AFIN$APDate,AFIN$CheckDate,NOLA_calendar)
 AFIN$AP<-AFIN$AP+1
 
 #### Calculate total days from invoice date (or stamp date, if applicable) to check date
-GP$TotalDays<-ifelse(is.na(GP$Stamp.Date),Days(GP,Invoice.Date,Check.Date),Days(GP,Stamp.Date,Check.Date))
+GP$TotalDays<-ifelse(is.na(GP$Stamp.Date),Days(GP,Invoice.Date,Check.Date),biz(GP,Stamp.Date,Check.Date))
 GP$TotalDays<-ifelse(GP$TotalDays<0,0,GP$TotalDays) ### Adjust any payments with a check date prior to invoice date to 0 days
 AFIN$TotalDays<-ifelse(is.na(AFIN$StampDate),Days(AFIN,InvoiceDate,CheckDate),Days(AFIN,StampDate,CheckDate))
 AFIN$TotalDays<-ifelse(AFIN$TotalDays<0,0,AFIN$TotalDays) ### Adjust any payments with a check date prior to invoice date to 0 days
