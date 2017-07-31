@@ -39,14 +39,14 @@ POs$Over4<-ifelse(POs$WorkingDays<=4,0,1)
 
 #### Plot the business days to process by quarter
 Days2PO<-cbind(aggregate(data=POs,WorkingDays~Qtr,FUN=mean),select(aggregate(data=POs,Req~Qtr,FUN=length),-Qtr,Count=Req))                    
-Purchasing<-ggplot(Days2PO,aes(x=factor(Qtr),y=WorkingDays))+
-    geom_bar(stat="identity",fill="steelblue")+
-      ggtitle("Average Business Days to Process Purchase Orders")+
-          xlab("Quarters")+ylab("Business Days")+
-              geom_text(aes(y=WorkingDays,ymax=WorkingDays,label=round(WorkingDays,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)+
-                #geom_hline(aes(yintercept=4,colour="#FF0000"),linetype=2,size=1)+
-                  theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=90,hjust=0.25))   
-print(Purchasing)
-ggsave("Procurement/Days to PO.png")
+# Purchasing<-ggplot(Days2PO,aes(x=factor(Qtr),y=WorkingDays))+
+#     geom_bar(stat="identity",fill="steelblue")+
+#       ggtitle("Average Business Days to Process Purchase Orders")+
+#           xlab("Quarters")+ylab("Business Days")+
+#               geom_text(aes(y=WorkingDays,ymax=WorkingDays,label=round(WorkingDays,2)),position=position_dodge(width=0.9),vjust=-.5,size=5)+
+#                 #geom_hline(aes(yintercept=4,colour="#FF0000"),linetype=2,size=1)+
+#                   theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=90,hjust=0.25))   
+# print(Purchasing)
+# ggsave("Procurement/Days to PO.png")
 
-write.csv(Days2PO,"Procurement/Days to PO.csv")
+# write.csv(Days2PO,"Procurement/Days to PO.csv")
