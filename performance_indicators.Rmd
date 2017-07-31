@@ -148,16 +148,16 @@ loadDataset <- function(dataset_name,
 ####Datasets
 ```{r, eval=FALSE}
 ###Read in data
-BS_routing <- loadDataset("BS_routing") 
+BS_routing <- loadDataset("BS_routing",  refresh_feather = TRUE) 
 
-BS_item <- loadDataset("BS_item") %>%
+BS_item <- loadDataset("BS_item",  refresh_feather = TRUE) %>%
   mutate(Req = as.integer(as.character(Req)))
 
-BS <- loadDataset("BS")  %>%
+BS <- loadDataset("BS",  refresh_feather = TRUE)  %>%
   mutate(Req = as.integer(as.character(Req)))
 
-vendor <-  loadDataset("vendor")
-approval_paths <-  loadDataset("approval_paths")
+vendor <-  loadDataset("vendor",  refresh_feather = TRUE)
+approval_paths <-  loadDataset("approval_paths",  refresh_feather = TRUE)
 ```
 
 
@@ -282,9 +282,16 @@ ggsave("Days to Req.png")
 
 
 ##### Write out datasets
-write.csv(Budget_KPI,"Budget Reqs.csv") ### Budget KPIs
+write.csv(Budget_KPI,"budget_1_1/Budget Reqs.csv") ### Budget KPIs
 write.csv(Reqs,"Reqs.csv")
 ```
+
+### ResultsNOLA Measure 1-1 Data   
+
+```{r}
+Budget_KPI
+```
+
 
 ##Finance  
 
@@ -293,8 +300,8 @@ write.csv(Reqs,"Reqs.csv")
 ###Setup
 
 ```{r, eval=FALSE}
-Invoice <-  loadDataset("Invoice")
-Receipt <- loadDataset("Receipt")
+Invoice <-  loadDataset("Invoice", refresh_feather = TRUE)
+Receipt <- loadDataset("Receipt", refresh_feather = TRUE)
 ```
 
 ###GFInvoices
