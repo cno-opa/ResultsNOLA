@@ -1,0 +1,3 @@
+div > pre:not(.sourceCode) {
+	color: #000000;
+}

@@ -1,0 +1,73 @@
+---
+title: ""
+output:
+  html_notebook:
+    css: custom.css
+    highlight: zenburn
+    toc: yes
+  html_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+require("knitr")
+library(rprojroot)
+opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+library(stargazer)
+library(purrr)
+library(dplyr)
+library(feather)
+library(lubridate)
+library(ggplot2)
+library(ggthemr)
+library(broom)
+library(rmarkdown)
+library(tidyr)
+library(scales)
+library(readxl)
+library(readr)
+ggthemr("pale", spacing = 2)
+```
+
+
+```{r}
+datasets <- list(exp1 = read_csv("measure16_9/quickbase_data/expenditures.csv") %>%
+                   select(Start = `Date Sent to Finance`,
+                          End = `Date City Check Cut`))
+datasets$exp3 <- read_csv("measure16_9/quickbase_data/expenditures (3).csv") %>%
+                   select(Start = `Date Sent to Finance`,
+                          End = `Date Sent to State`)
+datasets$exp4 <- read_csv("measure16_9/quickbase_data/expenditures (4).csv")%>%
+                   select(Start = `Date Sent to Finance`,
+                          End = `Date City Check Cut`)
+datasets$exp5 <- read_csv("measure16_9/quickbase_data/expenditures (5).csv")%>%
+                   select(Start = `Date Sent to Finance`,
+                          End = `Date Sent to State`)
+datasets$exp6 <- read_csv("measure16_9/quickbase_data/expenditures (6).csv")%>%
+                   select(Start = `Date Sent to Finance`,
+                          End = `Date City Check Released`)
+datasets$exp7 <- read_csv("measure16_9/quickbase_data/expenditures (7).csv")%>%
+                   select(Start = `Date Sent to Finance`,
+                          End = `Date City Check Released`)
+datasets$expv <- read_csv("measure16_9/quickbase_data/vendor_expenditures.csv")%>%
+                   select(Start = `Date Sent to Accounting`,
+                          End = `Date Vendor Paid`)
+
+
+```
+
+```{r}
+combined <- data.frame()
+  
+for (d in datasets) {
+  combined <- combined %>%
+    bind_rows(d)
+}
+
+d %>% 
+  mutate(Start = mdy(Start), End = mdy(End), diff = as.numeric(End - Start)) %>% 
+  filter(!is.na(Start),!is.na(Start)) %>% 
+  group_by(year(End), quarter(End)) %>%
+  summarise(n(), mean(diff), min(diff))
+```
+
