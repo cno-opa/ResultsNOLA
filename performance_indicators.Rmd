@@ -402,6 +402,18 @@ write.csv(APdist,"Accounts Payable.csv")
 
 ```
 
+### ResultsNOLA Measure 16-8  
+
+```{r}
+write.csv(APdist,"finance_16_8/Accounts Payable.csv")
+
+APdist %>% 
+  group_by(Qtr) %>%
+  mutate(Total = sum(value)) %>%
+  ungroup() %>%
+  filter(Days == 'Under7')
+```
+
 
 
 
