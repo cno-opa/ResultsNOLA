@@ -2,8 +2,8 @@
 
 ### Read, clean, and format data files
 headings<-c("Dept","Req","FinanceDate","POnumber","POdate","Cost","Vendor","PrintDate","BuyerInitials","Buyer","WorkingDays")
-POs1<-read.csv("../report/ProcurementReqProcessing.csv",col.names=headings,stringsAsFactors=FALSE,skip=3)
-ReqStatus<-select(read.csv("../report/RequsitionStatus.csv",skip=3),Req=REQ_NBR,Status=STATUS)
+POs1<-read.csv("data/source/ProcurementReqProcessing.csv",col.names=headings,stringsAsFactors=FALSE,skip=3)
+ReqStatus<-select(read.csv("data/source/RequsitionStatus.csv",skip=3),Req=REQ_NBR,Status=STATUS)
 #Category<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/PObyCategory.csv",skip=3),Req=REQ_NBR,Descr=DESC_LONG)
 
 
@@ -38,7 +38,7 @@ POs$Over4<-ifelse(POs$WorkingDays<=4,0,1)
 ### Plotting
 
 #### Plot the business days to process by quarter
-Days2PO<-cbind(aggregate(data=POs,WorkingDays~Qtr,FUN=mean),select(aggregate(data=POs,Req~Qtr,FUN=length),-Qtr,Count=Req)[1:24,])                    
+Days2PO<-cbind(aggregate(data=POs,WorkingDays~Qtr,FUN=mean),select(aggregate(data=POs,Req~Qtr,FUN=length),-Qtr,Count=Req))                    
 Purchasing<-ggplot(Days2PO,aes(x=factor(Qtr),y=WorkingDays))+
     geom_bar(stat="identity",fill="steelblue")+
       ggtitle("Average Business Days to Process Purchase Orders")+

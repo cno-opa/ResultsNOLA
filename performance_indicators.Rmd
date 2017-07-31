@@ -3,6 +3,12 @@ title: "R Notebook"
 output: html_notebook
 ---
 
+##Description  
+
+Running the following script will calculate these two meas
+
+
+
 ##Setup  
 
 
@@ -147,7 +153,7 @@ loadDataset <- function(dataset_name,
 
 
 
-##Budget  
+##Budget 1-1  
 
 
 ###Setup  
@@ -299,8 +305,19 @@ write.csv(Reqs,"Reqs.csv")
 Budget_KPI
 ```
 
+##Finance 16-7  
 
-##Finance  
+```{r}
+source('Procurement.R')
+```
+
+```{r}
+Days2PO
+```
+
+
+
+##Finance 16-8  
 
 
 
