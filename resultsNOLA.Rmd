@@ -18,287 +18,28 @@ library(rprojroot)
 opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 ```
 
-```{r, message=FALSE}
+
+```{r, message=FALSE, warning=FALSE}
 # source('code/00_dependencies.R')
 knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo = FALSE)
 ```
 
 
 
-```{r}
-library(devtools) #### for source_url function in Main.R
-library(tidyr) # Contracts
-library(plyr)  # May still be used
-library(dplyr) # All
-library(lubridate) # All
-# library(xlsx) # Contracts
-library(stringr)# Contracts and payments narrative
-library(reshape2)# Contracts and procurement
-library(zoo)# All (for as.yearqtr class)
-library(ggplot2)# All
-library(bizdays)# For business day processing
-# library(scales) # Not sure if this is needed anymore
-# library(RCurl) # Not sure this is needed anymore
-# library(data.table)#### setnames function (not sure if needed)
-library(readxl) ### Reading in Adjustments.xlsx
-library(RODBC) ### Needed for SQL queries
-library(feather)
-library(readr)
-source_url("https://raw.githubusercontent.com/cno-opa/graphics/master/plotters.R") 
-
-
+```{r, message=FALSE, warning=FALSE}
+source('code/00_load_dependencies.R')
 ```
-
-###Create biz day calendar  
-
-```{r}
-holiday_list <- read_csv('data/holiday_list.csv')
-
-holiday_list <- holiday_list %>%
-  mutate(holidays = mdy(holidays))
-
-NOLA_calendar<-create.calendar(holidays= holiday_list$holidays,
-                        start.date="2011-01-1",end.date="2017-12-31",
-                        name="NOLA_calendar",
-                        weekdays=c("saturday","sunday"),)
-```
-
-
-
-###Dates
-```{r}
-r_period<-as.yearqtr(as.Date(Sys.Date())-1)
-last<- as.Date(as.yearqtr(r_period)+0.25)-1
-```
-
-
-###Refeathering
-
-####configs  
-
-```{r}
-configs <- c(BS_routing = "select Req=REQ_NBR, Approver=REQ_APPROVER, Request_Date=REQ_REQ_APP_DATE,                 
-                              ApprovalDate=APPROVAL_DATE,Ord=ORDER_SEQUENCE, Path_ID=APPROVAL_PATH_ID
-                              from REQ_ROUTING
-                              where ORG_ID= '1000'
-                              and ReQ_REQ_APP_DATE >= Convert(datetime,'2011-1-1')", 
-             BS_item =  "select Req=REQ_NBR, Bid=BID_NBR, PO=PO_ID, Class=CLASS_PRIMARY, NIGP=CLASS_ITEM, Vendor_code=RECOMMENDED_VENDOR_NBR
-                          from REQ_ITEM",
-             BS = "select Req=REQ_NBR ,Dept_code=LOC_ID,  Org=DEPT_NBR_SUFFIX , Req_Amount=EST_COST, CreationDate=ENTERED_DATE,	    
-                      Description=SHORT_DESC, ReqStatus=CURRENT_HDR_STATUS, StatusDate=DATE_LAST_UPDATED,Purchaser=PURCHASER_USER_ID, 
-                      Requestor=REQUESTOR_ID
-                      from REQ
-                      where	ORG_ID='1000'",
-             vendor =  "select Vendor_code=VENDOR_NBR,  Vendor=NAME,	Vendor_type=VENDOR_DESCRIPTION
-                          from VENDOR",
-             approval_paths = "select Dept_code=APPROVAL_PATH_ID,  Dept=DESC_TEXT
-                                  from APPROVAL_PATHS",
-             Invoice = "select PO=PO_NBR, Invoice=INVOICE_NBR, Vendor_code=VENDOR_NBR, AP_Process_Date=DATE_APPROVED, Approver=USER_APPROVED, 
-                          Amount=INVOICE_AMT 
-                          FROM INVOICE_HDR
-                          where PAYMENT_DATE>= Convert(datetime,'2013-1-1')
-                          and INVOICE_STATUS = '4IP'",
-             Receipt = "select PO=PO_NBR, Receipt=RECEIPT_ID, ORG_CODE=DEPT_NBR_PREFIX,Description=SHORT_DESC, ReceiptDate=DATE_LAST_UPDATED
-                            from RECEIPT_HEADER
-                            where CURRENT_HDR_STATUS = '5CA'
-                            and DATE_LAST_UPDATED >= Convert(datetime,'2011-1-1')"
-             
-             ) %>% 
-  data.frame(Query = ., 
-             stringsAsFactors = FALSE) %>%
-  mutate(Name = row.names(.), 
-         FeatherFilePath = paste("feathers/",
-                                   Name,
-                                   ".feather",
-                                   sep = ""))
-
-
-
-```
-
-
-```{r}
-refeather <- function(query,
-                      connection,
-                      feather_path)
-{
-  print(query)
-  fresh_data <- sqlQuery(connection, query) 
-  
-  fresh_data %>%
-    write_feather(feather_path)
-}
-
-
-
-loadDataset <- function(dataset_name,
-                        refresh_feather = FALSE)
-{
-  config <- configs %>% 
-    filter(Name == dataset_name) 
-  
-  if (refresh_feather == TRUE | file.exists(config$FeatherFilePath) == FALSE)
-  {
-    
-    connector <- odbcDriverConnect(connection="Driver={SQL Server};
-                            server=cno-sqlreport01;database=Buyspeed;
-                            trusted_connection=yes;")
-
-    refeather(config$Query,
-              connector,
-              config$FeatherFilePath
-              )
-    
-    close(connector)
-  } 
-  
-  read_feather(config$FeatherFilePath) %>%
-    return()
-}
-
-```
-
-
-
-
-
 
 
 
 ##Budget 1-1  
 
 
-###Setup  
 
-####Datasets
-```{r}
-###Read in data
-BS_routing <- loadDataset("BS_routing",  refresh_feather = FALSE) 
-
-BS_item <- loadDataset("BS_item",  refresh_feather = FALSE) %>%
-  mutate(Req = as.integer(as.character(Req)))
-
-BS <- loadDataset("BS",  refresh_feather = FALSE)  %>%
-  mutate(Req = as.integer(as.character(Req)))
-
-vendor <-  loadDataset("vendor",  refresh_feather = FALSE)
-approval_paths <-  loadDataset("approval_paths",  refresh_feather = FALSE)
+```{r, message=FALSE, warning=FALSE}
+source('code/10_calculate_budget_1_1.R')
 ```
 
-
-
-###Script  
-
-```{r}
-Reqs<-BS_routing[!is.na(BS_routing$ApprovalDate),]
-
-#### Subset data for reqs from 2011 to current reporting period
-Reqs<-filter(Reqs,Request_Date>"2010-12-31")
-Reqs<-Reqs[as.Date(Reqs$Request_Date)<=last,]
-
-#### Clean path ID column to identify if the approver is at the departmental, Budget, or Finance level
-Reqs<-Reqs[!is.na(Reqs$Path_ID),]
-Reqs$Path_ID<-ifelse(Reqs$Path_ID=="BUDGET","Budget",
-                     ifelse(Reqs$Path_ID=="FINANCE","Finance","Dept"))
-
-#### Save request dates as separate data frame
-Request<-select(Reqs,Req,Request_Date)
-Request<-Request[!duplicated(Request$Req),]
-
-#### Departmental subset cleaning
-##### Create separate dataframe of department approvals and take only the latest approval date
-Dept_reqs<-Reqs[Reqs$Path_ID=="Dept",]
-Dept_reqs<-arrange(Dept_reqs,desc(ApprovalDate))
-Dept_reqs<-Dept_reqs[!duplicated(Dept_reqs$Req),]
-Dept_reqs<-select(Dept_reqs,-Approver,-Ord,-Path_ID)
-
-#### Re-name approval date column for departmental data frame
-names(Dept_reqs)[names(Dept_reqs)=="ApprovalDate"]<-"Department"
-
-
-#### Budget and Finance cleaning
-##### Remove departmental approvals from main dataset
-Reqs<-Reqs[Reqs$Path_ID!="Dept",]
-Reqs<-select(Reqs,-Ord,-Approver,-Request_Date)
-Reqs<-spread(Reqs,Path_ID,ApprovalDate)
-
-
-
-#### Master dataset cleaning
-##### Re-join department data frame with Budget and Finance approvals
-Reqs<-left_join(Reqs,Request,by="Req")
-Reqs<-full_join(Reqs,Dept_reqs,by="Req")
-
-##### Consolidate request date column into one
-Reqs[,"Request_Date"]<-NULL
-
-
-Reqs <- Reqs %>%
-  mutate(Request_Date.x = as.POSIXct(Request_Date.x),
-         Request_Date.y = as.POSIXct(Request_Date.y),
-         Request_Date = if_else(is.na(Request_Date.x) == TRUE, 
-                               Request_Date.y, 
-                               Request_Date.x))
-
-
-##### Drop .x and .y request columns, and rearrange column order
-Reqs <- select(Reqs,Req,Request_Date,Department,Budget,Finance)
-```
-
-
-
-```{r}
-#####Select needed columns from Buyspeed item table
-Req_item<-select(BS_item,Req,Bid,PO,Vendor_code)
-Req_item<-Req_item[!duplicated(Req_item$Req),]
-
-##### Merge cleaned dataset with other needed Buyspeed tables
-Reqs<-left_join(Reqs,BS,by="Req") %>%
-  left_join(Req_item,by="Req") %>%
-  left_join(vendor,by="Vendor_code") %>%
-  left_join(approval_paths,by="Dept_code")
-
-
-##### Remove cancelled requisitions, as those returned to department for resubmission from dataset
-Reqs<-Reqs[Reqs$ReqStatus!="1RC"| Reqs$ReqStatus!="1RR",]
-
-##### Code each req into quarters based on the date of final approval by Finance
-Reqs$First_Qtr<-as.yearqtr(Reqs$Request_Date)
-Reqs$Close_Qtr<-as.yearqtr(Reqs$Finance)
-
-##### Calculate days per stage
-Reqs$Budget_Days<-ifelse(!is.na(Reqs$Department),
-                        round(as.numeric(difftime(as.POSIXct(Reqs$Budget),as.POSIXct(Reqs$Department),units="days")),2),
-                        round(as.numeric(difftime(as.POSIXct(Reqs$Budget),as.POSIXct(Reqs$Request_Date),units="days")),2))
-Reqs$Finance_Days<-round(as.numeric(difftime(as.POSIXct(Reqs$Finance),as.POSIXct(Reqs$Budget),units="days")),2)
-
-##### Calculate total days from final departmental approval to Finance approval
-Reqs$Total_Days<-ifelse(!is.na(Reqs$Department),
-                        round(as.numeric(difftime(as.POSIXct(Reqs$Finance),as.POSIXct(Reqs$Department),units="days")),2),
-                        round(as.numeric(difftime(as.POSIXct(Reqs$Finance),as.POSIXct(Reqs$Request_Date),units="days")),2))
-   
-#### Aggregate quarterly counts and averages for days to Budget and Finance approval
-Budget_KPI<-cbind(aggregate(data=Reqs,Budget_Days~Close_Qtr,FUN=mean),select(aggregate(data=Reqs,Budget_Days~Close_Qtr,FUN=length),-Close_Qtr,Count=Budget_Days))                    
-# Finance_Days<-cbind(aggregate(data=Reqs,Finance_Days~Close_Qtr,FUN=mean),select(aggregate(data=Reqs,Finance_Days~Close_Qtr,FUN=length),-Close_Qtr,Count=Finance_Days))                    
-# 
-# #### Aggregate total days to approval
-# Days2Req<-select(cbind(Budget_KPI,select(Finance_Days,-Close_Qtr,-Count)),Close_Qtr,Count,Budget_Days,Finance_Days)
-# 
-# 
-# 
-# ### Plotting
-# #### Drop incomplete quarters (assumption of at least 2,500 per quarter)
-# Days2Req<-filter(Days2Req,Days2Req$Count>2000)
-# 
-# #### Plot days to approval requisitions
-# Days2Req<-select(Days2Req,Close_Qtr,Budget_Days,Finance_Days)
-# 
-# Days2Req<-melt(Days2Req,id.vars="Close_Qtr")
-# 
-
-```
-
-### ResultsNOLA Measure 1-1 Data   
 
 ```{r}
 Budget_KPI
@@ -307,45 +48,7 @@ Budget_KPI
 ##Finance 16-7  
 
 ```{r}
-headings<-c("Dept","Req","FinanceDate","POnumber","POdate","Cost","Vendor","PrintDate","BuyerInitials","Buyer","WorkingDays")
-POs1<-read.csv("data/source/ProcurementReqProcessing.csv",col.names=headings,stringsAsFactors=FALSE,skip=3)
-ReqStatus<-select(read.csv("data/source/RequsitionStatus.csv",skip=3),Req=REQ_NBR,Status=STATUS)
-#Category<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/PObyCategory.csv",skip=3),Req=REQ_NBR,Descr=DESC_LONG)
-
-
-### Data cleaning
-
-#### Standardize req number variables in two data sets
-POs<-merge(POs1,ReqStatus,by="Req",all.x=TRUE)
-#Reqs<-merge(Reqs,Category,by="Req",all.x=TRUE)
-
-#### Convert dollar amount column to numeric class for readability
-POs$Cost<-as.numeric(sub("\\$","",POs$Cost))
-
-#### Clean out purchase orders that have been cancelled, as well as punch-outs that have created errors.
-Exclude<-POs[POs$Vendor=="Independent Stationers" & POs$Cost==30.48|POs$Vendor=="Independent Stationers" & POs$Cost==0|POs$Vendor=="FASTENAL COMPANY" & POs$Cost==0 | POs$Vendor=="Independent Stationers" & POs$Cost==30.44 | POs$Vendor=="Independent Stationers" & POs$Cost==34.80 | POs$Vendor=="Independent Stationers" & POs$Cost==53.88 | POs$Vendor=="Grainger, Inc." & POs$Cost==99.09|POs$Cost==0,]
-POs<-anti_join(POs,Exclude,by="Req")
-
-#### Format date and quarter columns as needed
-POs$FinanceDate<-as.Date(POs$FinanceDate,"%m/%d/%Y")
-POs$POdate<-as.Date(POs$POdate,"%m/%d/%Y")
-#POs<-filter(POs,POdate>FinanceDate)
-POs$Qtr<-as.yearqtr(POs$POdate,format="%m/%d/%Y")
-
-#### Calculate business days (this relies on NOLA_calendar read from github)
-POs$WorkingDays<-bizdays(POs$FinanceDate,POs$POdate,NOLA_calendar)
-POs$WorkingDays<-POs$WorkingDays+1 ##### Adjust calculation up one day, as bizdays function calculates 1 less day than Excel's parallel formula, networkdays 
-
-#### Create distribution bins for business days to process
-POs$Under4<-ifelse(POs$WorkingDays<=4,1,0)
-POs$Over4<-ifelse(POs$WorkingDays<=4,0,1)
-
-
-### Plotting
-
-#### Plot the business days to process by quarter
-Days2PO<-cbind(aggregate(data=POs,WorkingDays~Qtr,FUN=mean),select(aggregate(data=POs,Req~Qtr,FUN=length),-Qtr,Count=Req))                    
-# Purchasing<-ggplot(Days2PO,aes(x=factor(Qtr),y=WorkingDays))+
+source('code/20_calculate_finance_16_7.R')
 ```
 
 ```{r}
@@ -356,85 +59,10 @@ Days2PO
 
 ##Finance 16-8  
 
-
-
-###Setup
-
-```{r}
-Invoice <-  loadDataset("Invoice")
-Receipt <- loadDataset("Receipt")
+```{r, message=FALSE, warning=FALSE}
+source('code/30_calculate_finance_16_8.R')
 ```
 
-###GFInvoices
-```{r}
-### This is a script to analyze general fund payment processing at Accounts Payable, 
-### measuring the time between most recent "receipt" created in Buyspeed by a department,
-### and the final approval by an Accounts Payable staffer in Buyspeed
-
-#### Create consolidated Buyspeed payment dataset
-Payments<-Invoice%>%
-          left_join(Receipt,by="PO")
-
-#### Group payment data by invoice number, and sort so the most recent department receipt date is at the top
-Payments<-group_by(Payments,Invoice)%>%
-  arrange(desc(ReceiptDate))
-
-### De-duplicate payments to only include the most recent departmental receipt date
-Payments<-Payments[!duplicated(Payments$Invoice),]
-
-### Remove payments for which the Accounts Payable approval was after dept receipt date
-Payments<-Payments[Payments$ReceiptDate<=Payments$AP_Process_Date,]
-
-#### Subset for payments made after the reporting period and before 2013
-Payments<-filter(Payments,AP_Process_Date>"2012-12-31")
-Payments<-Payments[as.Date(Payments$AP_Process_Date)<=last,]
-
-### Code quarter variable based on date of Accounts Payable processing
-Payments$Qtr<-as.yearqtr(Payments$AP_Process_Date)
-
-
-### calculate business days from department Buyspeed receipt to final Buyspeed approval by Accounts Payable staff
-Payments$APWorkingDays<-bizdays(as.Date(as.character(Payments$ReceiptDate),"%Y-%m-%d %H:%M:%S"),as.Date(as.character(Payments$AP_Process_Date),"%Y-%m-%d %H:%M:%S"),NOLA_calendar)
-Payments$APWorkingDays<-Payments$APWorkingDays+1 ##### Adjust calculation up one day, as bizdays function calculates 1 less day than Excel's parallel formula, networkdays 
-
-#### Segment AP processing days into bins
-Payments$APUnder7<-ifelse(Payments$APWorkingDays<=7,1,0)
-Payments$AP7_14<-ifelse(Payments$APWorkingDays>7 & Payments$APWorkingDays<=14,1,0)
-Payments$APOver14<-ifelse(Payments$APWorkingDays>14,1,0)
-
-
-
-### Plotting
-Payments <- Payments 
-
-#### Plot days to process by Accounts Payable
-APWorkingDays <- aggregate(data=Payments,
-                           APWorkingDays~Qtr,
-                           FUN=mean) 
-
-second_one <- select(aggregate(data=Payments,
-                                      Invoice~Qtr,
-                                      FUN=length),
-                     -Qtr,
-                            Count=Invoice) 
-  
-Days2Payment<- APWorkingDays %>%
-  cbind(second_one) 
-
-
-#### Plot distribution of days to process by Accounts Payable
-APdist<-select(Payments,Qtr,APUnder7,AP7_14,APOver14)
-APdist<-aggregate(cbind(APdist$APUnder7,APdist$AP7_14,APdist$APOver14)~Qtr,data=APdist,FUN=sum);colnames(APdist)[grepl("V1", colnames(APdist))] <- "Under7";colnames(APdist)[grepl("V2", colnames(APdist))] <- "Between7_14";colnames(APdist)[grepl("V3", colnames(APdist))] <- "Over14"
-APdist<-melt(APdist,id.vars="Qtr",variable.name="Days")
-APdist<-APdist %>% group_by(Qtr, Days) %>% 
-  summarise(value = sum(value)) %>%   # Within each quarter, sum all values in each bin of days
-  mutate(percent = value/sum(value),
-         pos = cumsum(percent) - 0.5*percent)
-
-
-```
-
-### ResultsNOLA Measure 16-8  
 
 ```{r}
 APdist %>% 
