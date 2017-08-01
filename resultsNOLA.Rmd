@@ -12,6 +12,18 @@ Running the following script will calculate these two meas
 ##Setup  
 
 
+```{r setup, include=FALSE}
+require("knitr")
+library(rprojroot)
+opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+```
+
+```{r, message=FALSE}
+# source('code/00_dependencies.R')
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo = FALSE)
+```
+
+
 
 ```{r}
 library(devtools) #### for source_url function in Main.R
@@ -161,16 +173,16 @@ loadDataset <- function(dataset_name,
 ####Datasets
 ```{r}
 ###Read in data
-BS_routing <- loadDataset("BS_routing",  refresh_feather = TRUE) 
+BS_routing <- loadDataset("BS_routing",  refresh_feather = FALSE) 
 
-BS_item <- loadDataset("BS_item",  refresh_feather = TRUE) %>%
+BS_item <- loadDataset("BS_item",  refresh_feather = FALSE) %>%
   mutate(Req = as.integer(as.character(Req)))
 
-BS <- loadDataset("BS",  refresh_feather = TRUE)  %>%
+BS <- loadDataset("BS",  refresh_feather = FALSE)  %>%
   mutate(Req = as.integer(as.character(Req)))
 
-vendor <-  loadDataset("vendor",  refresh_feather = TRUE)
-approval_paths <-  loadDataset("approval_paths",  refresh_feather = TRUE)
+vendor <-  loadDataset("vendor",  refresh_feather = FALSE)
+approval_paths <-  loadDataset("approval_paths",  refresh_feather = FALSE)
 ```
 
 
@@ -230,7 +242,7 @@ Reqs <- Reqs %>%
 
 
 ##### Drop .x and .y request columns, and rearrange column order
-Reqs<-select(Reqs,Req,Request_Date,Department,Budget,Finance)
+Reqs <- select(Reqs,Req,Request_Date,Department,Budget,Finance)
 ```
 
 
@@ -267,36 +279,23 @@ Reqs$Total_Days<-ifelse(!is.na(Reqs$Department),
    
 #### Aggregate quarterly counts and averages for days to Budget and Finance approval
 Budget_KPI<-cbind(aggregate(data=Reqs,Budget_Days~Close_Qtr,FUN=mean),select(aggregate(data=Reqs,Budget_Days~Close_Qtr,FUN=length),-Close_Qtr,Count=Budget_Days))                    
-Finance_Days<-cbind(aggregate(data=Reqs,Finance_Days~Close_Qtr,FUN=mean),select(aggregate(data=Reqs,Finance_Days~Close_Qtr,FUN=length),-Close_Qtr,Count=Finance_Days))                    
+# Finance_Days<-cbind(aggregate(data=Reqs,Finance_Days~Close_Qtr,FUN=mean),select(aggregate(data=Reqs,Finance_Days~Close_Qtr,FUN=length),-Close_Qtr,Count=Finance_Days))                    
+# 
+# #### Aggregate total days to approval
+# Days2Req<-select(cbind(Budget_KPI,select(Finance_Days,-Close_Qtr,-Count)),Close_Qtr,Count,Budget_Days,Finance_Days)
+# 
+# 
+# 
+# ### Plotting
+# #### Drop incomplete quarters (assumption of at least 2,500 per quarter)
+# Days2Req<-filter(Days2Req,Days2Req$Count>2000)
+# 
+# #### Plot days to approval requisitions
+# Days2Req<-select(Days2Req,Close_Qtr,Budget_Days,Finance_Days)
+# 
+# Days2Req<-melt(Days2Req,id.vars="Close_Qtr")
+# 
 
-#### Aggregate total days to approval
-Days2Req<-select(cbind(Budget_KPI,select(Finance_Days,-Close_Qtr,-Count)),Close_Qtr,Count,Budget_Days,Finance_Days)
-
-
-
-### Plotting
-#### Drop incomplete quarters (assumption of at least 2,500 per quarter)
-Days2Req<-filter(Days2Req,Days2Req$Count>2000)
-
-#### Plot days to approval requisitions
-Days2Req<-select(Days2Req,Close_Qtr,Budget_Days,Finance_Days)
-
-Days2Req<-melt(Days2Req,id.vars="Close_Qtr")
-
-# Days2Req_plot<-ggplot(Days2Req,aes(x = factor(Close_Qtr), y = value,fill = variable)) +
-#   geom_bar(position = "stack",stat = "identity") +
-#   ggtitle("Days to Approve General Fund Requisitions")+
-#   xlab("Quarters")+ylab("Days")+
-#   geom_hline(aes(yintercept=2,colour="#FF0000"),linetype=2,size=1)+
-#   scale_fill_manual(values=c(darkBlue,lightBlue) ,name=" ",labels=c("Budget","Finance"))+
-#   theme(plot.title=element_text(size=13,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))
-# print(Days2Req_plot)
-# ggsave("Days to Req.png")
-
-
-##### Write out datasets
-# write.csv(Budget_KPI,"budget_1_1/Budget Reqs.csv") ### Budget KPIs
-# write.csv(Reqs,"Reqs.csv")
 ```
 
 ### ResultsNOLA Measure 1-1 Data   
@@ -308,7 +307,45 @@ Budget_KPI
 ##Finance 16-7  
 
 ```{r}
-source('Procurement.R')
+headings<-c("Dept","Req","FinanceDate","POnumber","POdate","Cost","Vendor","PrintDate","BuyerInitials","Buyer","WorkingDays")
+POs1<-read.csv("data/source/ProcurementReqProcessing.csv",col.names=headings,stringsAsFactors=FALSE,skip=3)
+ReqStatus<-select(read.csv("data/source/RequsitionStatus.csv",skip=3),Req=REQ_NBR,Status=STATUS)
+#Category<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/PObyCategory.csv",skip=3),Req=REQ_NBR,Descr=DESC_LONG)
+
+
+### Data cleaning
+
+#### Standardize req number variables in two data sets
+POs<-merge(POs1,ReqStatus,by="Req",all.x=TRUE)
+#Reqs<-merge(Reqs,Category,by="Req",all.x=TRUE)
+
+#### Convert dollar amount column to numeric class for readability
+POs$Cost<-as.numeric(sub("\\$","",POs$Cost))
+
+#### Clean out purchase orders that have been cancelled, as well as punch-outs that have created errors.
+Exclude<-POs[POs$Vendor=="Independent Stationers" & POs$Cost==30.48|POs$Vendor=="Independent Stationers" & POs$Cost==0|POs$Vendor=="FASTENAL COMPANY" & POs$Cost==0 | POs$Vendor=="Independent Stationers" & POs$Cost==30.44 | POs$Vendor=="Independent Stationers" & POs$Cost==34.80 | POs$Vendor=="Independent Stationers" & POs$Cost==53.88 | POs$Vendor=="Grainger, Inc." & POs$Cost==99.09|POs$Cost==0,]
+POs<-anti_join(POs,Exclude,by="Req")
+
+#### Format date and quarter columns as needed
+POs$FinanceDate<-as.Date(POs$FinanceDate,"%m/%d/%Y")
+POs$POdate<-as.Date(POs$POdate,"%m/%d/%Y")
+#POs<-filter(POs,POdate>FinanceDate)
+POs$Qtr<-as.yearqtr(POs$POdate,format="%m/%d/%Y")
+
+#### Calculate business days (this relies on NOLA_calendar read from github)
+POs$WorkingDays<-bizdays(POs$FinanceDate,POs$POdate,NOLA_calendar)
+POs$WorkingDays<-POs$WorkingDays+1 ##### Adjust calculation up one day, as bizdays function calculates 1 less day than Excel's parallel formula, networkdays 
+
+#### Create distribution bins for business days to process
+POs$Under4<-ifelse(POs$WorkingDays<=4,1,0)
+POs$Over4<-ifelse(POs$WorkingDays<=4,0,1)
+
+
+### Plotting
+
+#### Plot the business days to process by quarter
+Days2PO<-cbind(aggregate(data=POs,WorkingDays~Qtr,FUN=mean),select(aggregate(data=POs,Req~Qtr,FUN=length),-Qtr,Count=Req))                    
+# Purchasing<-ggplot(Days2PO,aes(x=factor(Qtr),y=WorkingDays))+
 ```
 
 ```{r}
@@ -324,8 +361,8 @@ Days2PO
 ###Setup
 
 ```{r}
-Invoice <-  loadDataset("Invoice", refresh_feather = TRUE)
-Receipt <- loadDataset("Receipt", refresh_feather = TRUE)
+Invoice <-  loadDataset("Invoice")
+Receipt <- loadDataset("Receipt")
 ```
 
 ###GFInvoices
@@ -383,16 +420,6 @@ second_one <- select(aggregate(data=Payments,
   
 Days2Payment<- APWorkingDays %>%
   cbind(second_one) 
-# 
-# Payment_plot<-ggplot(Days2Payment,aes(x=factor(Qtr),y=APWorkingDays))+
-#   geom_bar(stat="identity",fill="steelblue")+
-#   ggtitle("Average Business Days to Process General Fund Payments by Accounts Payable")+
-#   xlab("Quarters")+ylab("Business Days")+
-#   geom_text(aes(y=APWorkingDays,ymax=APWorkingDays,label=round(APWorkingDays,2)),position=position_dodge(width=0.9),vjust=-.5,size=4)+
-#   #geom_hline(aes(yintercept=7,colour="#FF0000"),linetype=2,size=1)+
-#   theme(plot.title=element_text(size=11,face="bold",vjust=1),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))   
-# print(Payment_plot)
-# ggsave("Buyspeed Days to Payment.png")
 
 
 #### Plot distribution of days to process by Accounts Payable
@@ -403,19 +430,7 @@ APdist<-APdist %>% group_by(Qtr, Days) %>%
   summarise(value = sum(value)) %>%   # Within each quarter, sum all values in each bin of days
   mutate(percent = value/sum(value),
          pos = cumsum(percent) - 0.5*percent)
-##### Generate plot
-# ggplot(APdist, aes(x=factor(Qtr),y=percent, fill=Days)) +
-#   geom_bar(stat='identity',  width = .7, colour="black", lwd=0.1) +
-#   geom_text(aes(label=ifelse(percent >= 0.01, paste0(sprintf("%.0f", percent*100),"%"),""),
-#                 y=pos), colour="black",size=3) +
-#   scale_y_continuous(labels = percent_format()) +
-#   scale_fill_manual(values=c("#009900","#FFFFCC","#FFCC99","#FF9999","#FF3300"))+
-#   labs(y="Distribution", x="Quarter")+
-#   ggtitle("Accounts Payable Processing (Business Days) \n - General Fund/Agency")+
-#   theme(plot.title=element_text(size=13,face="bold"),panel.background=element_blank(),axis.text.x=element_text(angle=45,hjust=0.25))
-# ggsave("Buyspeed AP Distribution.png")
 
-# write.csv(APdist,"Accounts Payable.csv")
 
 ```
 
