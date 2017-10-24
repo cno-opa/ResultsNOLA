@@ -46,6 +46,17 @@ Budget_KPI
 ```
 
 ##Finance 16-7  
+Need to first download reports at http://web-sqlrpt02/reports/pages/folder.aspx
+
+ProcurementReqProcessing:
+- http://web-sqlrpt02/Reports/Pages/Report.aspx?ItemPath=/OPA/OPA_BuyspeedRequisitions/RequsitionStatus
+
+- enter default date for start date and today's date for end date
+
+RequsitionStatus:
+- http://web-sqlrpt02/Reports/Pages/Report.aspx?ItemPath=/Procurement/ProcurementReports/ProcurementReqProcessing
+
+- enter default date for start date and today's date for end date
 
 ```{r}
 source('code/20_calculate_finance_16_7.R')
