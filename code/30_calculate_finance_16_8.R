@@ -1,5 +1,5 @@
-Invoice <-  loadDataset("Invoice")
-Receipt <- loadDataset("Receipt")
+Invoice <-  loadDataset("Invoice", refresh_feather = TRUE)
+Receipt <- loadDataset("Receipt", refresh_feather = TRUE)
 
 ### This is a script to analyze general fund payment processing at Accounts Payable, 
 ### measuring the time between most recent "receipt" created in Buyspeed by a department,

@@ -1,6 +1,6 @@
 headings<-c("Dept","Req","FinanceDate","POnumber","POdate","Cost","Vendor","PrintDate","BuyerInitials","Buyer","WorkingDays")
-POs1<-read.csv("data/source/ProcurementReqProcessing.csv",col.names=headings,stringsAsFactors=FALSE,skip=3)
-ReqStatus<-select(read.csv("data/source/RequsitionStatus.csv",skip=3),Req=REQ_NBR,Status=STATUS)
+POs1<-read.csv("data/source/2017_q3/ProcurementReqProcessing.csv",col.names=headings,stringsAsFactors=FALSE,skip=3)
+ReqStatus<-select(read.csv("data/source/2017_q3/RequsitionStatus.csv",skip=3),Req=REQ_NBR,Status=STATUS)
 #Category<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/PObyCategory.csv",skip=3),Req=REQ_NBR,Descr=DESC_LONG)
 
 
