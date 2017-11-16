@@ -1,39 +1,50 @@
-headings<-c("Dept","Req","FinanceDate","POnumber","POdate","Cost","Vendor","PrintDate","BuyerInitials","Buyer","WorkingDays")
-POs1<-read.csv("data/source/2017_q3/ProcurementReqProcessing.csv",col.names=headings,stringsAsFactors=FALSE,skip=3)
-ReqStatus<-select(read.csv("data/source/2017_q3/RequsitionStatus.csv",skip=3),Req=REQ_NBR,Status=STATUS)
-#Category<-select(read.csv("O:/Projects/ReqtoCheckSTAT/Query Files/PObyCategory.csv",skip=3),Req=REQ_NBR,Descr=DESC_LONG)
+source('code/00_load_dependencies.R')
 
+headings<-c("Dept","Req","FinanceDate","POnumber","POdate","Cost","Vendor","PrintDate","BuyerInitials","Buyer","WorkingDays")
+
+POs1 <- read_csv("data/source/2017_q3/ProcurementReqProcessing.csv",
+                 col_names=headings, skip=3)
+
+ReqStatus <- read_csv("data/source/2017_q3/RequsitionStatus.csv",skip=3) %>%
+  select(Req=REQ_NBR,Status=STATUS)
 
 ### Data cleaning
 
-#### Standardize req number variables in two data sets
-POs<-merge(POs1,ReqStatus,by="Req",all.x=TRUE)
-#Reqs<-merge(Reqs,Category,by="Req",all.x=TRUE)
+POs <- POs1 %>%
+  left_join(ReqStatus, "Req") %>%
+  mutate(Cost = as.numeric(sub("\\$","",Cost)))
 
-#### Convert dollar amount column to numeric class for readability
-POs$Cost<-as.numeric(sub("\\$","",POs$Cost))
+Exclude <- POs %>%
+  mutate( condition =  (Vendor=="Independent Stationers" & Cost==30.48) | 
+            (Vendor=="Independent Stationers" & Cost==0) |
+            (Vendor=="FASTENAL COMPANY" & Cost==0 ) |
+            (Vendor=="Independent Stationers" & Cost==30.44) |
+            (Vendor=="Independent Stationers" & Cost==34.80) |
+            (Vendor=="Independent Stationers" & Cost==53.88) |
+            (Vendor=="Grainger, Inc." & Cost==99.09) |
+            Cost== 0
+  ) %>%
+  filter(condition | is.na(condition)) %>%
+  select(-condition)
 
-#### Clean out purchase orders that have been cancelled, as well as punch-outs that have created errors.
-Exclude<-POs[POs$Vendor=="Independent Stationers" & POs$Cost==30.48|POs$Vendor=="Independent Stationers" & POs$Cost==0|POs$Vendor=="FASTENAL COMPANY" & POs$Cost==0 | POs$Vendor=="Independent Stationers" & POs$Cost==30.44 | POs$Vendor=="Independent Stationers" & POs$Cost==34.80 | POs$Vendor=="Independent Stationers" & POs$Cost==53.88 | POs$Vendor=="Grainger, Inc." & POs$Cost==99.09|POs$Cost==0,]
-POs<-anti_join(POs,Exclude,by="Req")
-
-#### Format date and quarter columns as needed
-POs$FinanceDate<-as.Date(POs$FinanceDate,"%m/%d/%Y")
-POs$POdate<-as.Date(POs$POdate,"%m/%d/%Y")
-#POs<-filter(POs,POdate>FinanceDate)
-POs$Qtr<-as.yearqtr(POs$POdate,format="%m/%d/%Y")
+POs<-anti_join(POs,Exclude,"Req") %>%
+  mutate(FinanceDate = as.Date(FinanceDate,"%m/%d/%Y"),
+         POdate = as.Date(POdate,"%m/%d/%Y"),
+         Qtr = as.yearqtr(POdate,format="%m/%d/%Y"))
 
 #### Calculate business days (this relies on NOLA_calendar read from github)
-POs$WorkingDays<-bizdays(POs$FinanceDate,POs$POdate,NOLA_calendar)
-POs$WorkingDays<-POs$WorkingDays+1 ##### Adjust calculation up one day, as bizdays function calculates 1 less day than Excel's parallel formula, networkdays 
 
-#### Create distribution bins for business days to process
-POs$Under4<-ifelse(POs$WorkingDays<=4,1,0)
-POs$Over4<-ifelse(POs$WorkingDays<=4,0,1)
+POs <- POs %>%
+  mutate(WorkingDays = bizdays(FinanceDate,POdate,NOLA_calendar) + 1)
 
+POs <- POs %>%
+  mutate(Under4 = ifelse(WorkingDays<=4,1,0),
+         Over4 = ifelse(WorkingDays<=4,0,1))
 
-### Plotting
+avg_working_days <- aggregate(data=POs,WorkingDays~Qtr,FUN=mean)
 
-#### Plot the business days to process by quarter
-Days2PO<-cbind(aggregate(data=POs,WorkingDays~Qtr,FUN=mean),select(aggregate(data=POs,Req~Qtr,FUN=length),-Qtr,Count=Req))                    
-# Purchasing<-ggplot(Days2PO,aes(x=factor(Qtr),y=WorkingDays))+
+number_working_days <- aggregate(data=POs,Req~Qtr,FUN=length) %>%
+  select(-Qtr,Count=Req)
+
+Days2PO <- cbind(avg_working_days,number_working_days)   
+
