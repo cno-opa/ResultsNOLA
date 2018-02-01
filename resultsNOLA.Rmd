@@ -52,11 +52,15 @@ ProcurementReqProcessing:
 - http://web-sqlrpt02/Reports/Pages/Report.aspx?ItemPath=/OPA/OPA_BuyspeedRequisitions/RequsitionStatus
 
 - enter default date for start date and today's date for end date
+- export to csv
+- save to data/source/YEAR_qQUARTERNUMBER 
 
 RequsitionStatus:
 - http://web-sqlrpt02/Reports/Pages/Report.aspx?ItemPath=/Procurement/ProcurementReports/ProcurementReqProcessing
 
 - enter default date for start date and today's date for end date
+- export to csv
+- save to data/source/YEAR_qQUARTERNUMBER 
 
 ```{r}
 source('code/20_calculate_finance_16_7.R')
@@ -77,10 +81,11 @@ source('code/30_calculate_finance_16_8.R')
 
 ```{r}
 APdist %>% 
-  group_by(Qtr) %>%
-  mutate(Total = sum(value)) %>%
-  ungroup() %>%
-  filter(Days == 'Under7')
+  group_by(Qtr) %>%    
+  mutate(Total = sum(value), pct = value/Total) %>%    
+  ungroup() %>%    
+  filter(Days == 'Under7') %>% 
+  View()
 ```
 
 

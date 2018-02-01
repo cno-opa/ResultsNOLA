@@ -28,7 +28,11 @@ Payments$Qtr<-as.yearqtr(Payments$AP_Process_Date)
 
 
 ### calculate business days from department Buyspeed receipt to final Buyspeed approval by Accounts Payable staff
-Payments$APWorkingDays<-bizdays(as.Date(as.character(Payments$ReceiptDate),"%Y-%m-%d %H:%M:%S"),as.Date(as.character(Payments$AP_Process_Date),"%Y-%m-%d %H:%M:%S"),NOLA_calendar)
+Payments$APWorkingDays<-bizdays(
+  as.Date(as.character(Payments$ReceiptDate),"%Y-%m-%d %H:%M:%S"),
+  as.Date(as.character(Payments$AP_Process_Date),"%Y-%m-%d %H:%M:%S"),
+  NOLA_calendar)
+
 Payments$APWorkingDays<-Payments$APWorkingDays+1 ##### Adjust calculation up one day, as bizdays function calculates 1 less day than Excel's parallel formula, networkdays 
 
 #### Segment AP processing days into bins
@@ -37,30 +41,13 @@ Payments$AP7_14<-ifelse(Payments$APWorkingDays>7 & Payments$APWorkingDays<=14,1,
 Payments$APOver14<-ifelse(Payments$APWorkingDays>14,1,0)
 
 
-
-### Plotting
-Payments <- Payments 
-
-#### Plot days to process by Accounts Payable
-APWorkingDays <- aggregate(data=Payments,
-                           APWorkingDays~Qtr,
-                           FUN=mean) 
-
-second_one <- select(aggregate(data=Payments,
-                               Invoice~Qtr,
-                               FUN=length),
-                     -Qtr,
-                     Count=Invoice) 
-
-Days2Payment<- APWorkingDays %>%
-  cbind(second_one) 
-
-
 #### Plot distribution of days to process by Accounts Payable
-APdist<-select(Payments,Qtr,APUnder7,AP7_14,APOver14)
-APdist<-aggregate(cbind(APdist$APUnder7,APdist$AP7_14,APdist$APOver14)~Qtr,data=APdist,FUN=sum);colnames(APdist)[grepl("V1", colnames(APdist))] <- "Under7";colnames(APdist)[grepl("V2", colnames(APdist))] <- "Between7_14";colnames(APdist)[grepl("V3", colnames(APdist))] <- "Over14"
-APdist<-melt(APdist,id.vars="Qtr",variable.name="Days")
-APdist<-APdist %>% group_by(Qtr, Days) %>% 
-  summarise(value = sum(value)) %>%   # Within each quarter, sum all values in each bin of days
-  mutate(percent = value/sum(value),
-         pos = cumsum(percent) - 0.5*percent)
+
+
+APdist<- Payments %>%
+  group_by(Qtr) %>%
+  summarise_at(vars(APUnder7, AP7_14, APOver14), sum) %>%
+  rename(Under7 = APUnder7, 
+         Between7_14 = AP7_14,
+         Over14 = APOver14) %>%
+  gather(Days, value, c(Under7:Over14))
