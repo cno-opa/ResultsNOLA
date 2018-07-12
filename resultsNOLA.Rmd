@@ -3,10 +3,6 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-##Description  
-
-Running the following script will calculate these two meas
-
 
 
 ##Setup  
