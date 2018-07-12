@@ -30,8 +30,7 @@ Payments$Qtr<-as.yearqtr(Payments$AP_Process_Date)
 ### calculate business days from department Buyspeed receipt to final Buyspeed approval by Accounts Payable staff
 Payments$APWorkingDays<-bizdays(
   as.Date(as.character(Payments$ReceiptDate),"%Y-%m-%d %H:%M:%S"),
-  as.Date(as.character(Payments$AP_Process_Date),"%Y-%m-%d %H:%M:%S"),
-  NOLA_calendar)
+  as.Date(as.character(Payments$AP_Process_Date),"%Y-%m-%d %H:%M:%S"))
 
 Payments$APWorkingDays<-Payments$APWorkingDays+1 ##### Adjust calculation up one day, as bizdays function calculates 1 less day than Excel's parallel formula, networkdays 
 

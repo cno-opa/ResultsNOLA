@@ -32,10 +32,11 @@ POs<-anti_join(POs,Exclude,"Req") %>%
          POdate = as.Date(POdate,"%m/%d/%Y"),
          Qtr = as.yearqtr(POdate,format="%m/%d/%Y"))
 
-#### Calculate business days (this relies on NOLA_calendar read from github)
+#### Calculate business days (this used to rely on NOLA_calendar read from github)
 
 POs <- POs %>%
-  mutate(WorkingDays = bizdays(FinanceDate,POdate,NOLA_calendar) + 1)
+  # mutate(WorkingDays = bizdays(FinanceDate,POdate,NOLA_calendar) + 1)
+  mutate(WorkingDays = bizdays(FinanceDate,POdate) + 1)
 
 POs <- POs %>%
   mutate(Under4 = ifelse(WorkingDays<=4,1,0),
@@ -44,7 +45,6 @@ POs <- POs %>%
 avg_working_days <- aggregate(data=POs,WorkingDays~Qtr,FUN=mean)
 
 number_working_days <- aggregate(data=POs,Req~Qtr,FUN=length) %>%
-  filter(year(Qtr) != 2018) %>%
   select(-Qtr,Count=Req)
 
 Days2PO <- cbind(avg_working_days,number_working_days)   
