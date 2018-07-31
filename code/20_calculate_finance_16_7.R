@@ -2,10 +2,10 @@ source('code/00_load_dependencies.R')
 
 headings<-c("Dept","Req","FinanceDate","POnumber","POdate","Cost","Vendor","PrintDate","BuyerInitials","Buyer","WorkingDays")
 
-POs1 <- read_csv("data/source/2017_q4/ProcurementReqProcessing.csv",
+POs1 <- read_csv("data/source/2018_q2/ProcurementReqProcessing.csv",
                  col_names=headings, skip=3)
 
-ReqStatus <- read_csv("data/source/2017_q4/RequsitionStatus.csv",skip=3) %>%
+ReqStatus <- read_csv("data/source/2018_q2/RequsitionStatus.csv",skip=3) %>%
   select(Req=REQ_NBR,Status=STATUS)
 
 ### Data cleaning

@@ -17,7 +17,7 @@ library(RODBC) ### Needed for SQL queries
 library(feather)
 library(readr)
 
-source_url("https://raw.githubusercontent.com/cno-opa/graphics/master/plotters.R") 
+# source_url("https://raw.githubusercontent.com/cno-opa/graphics/master/plotters.R") 
 
 source('code/functions/query_and_feather.R')
 
@@ -30,7 +30,7 @@ holiday_list <- holiday_list %>%
 NOLA_calendar<-create.calendar(holidays= holiday_list$holidays,
                                start.date="2011-01-1",end.date="2017-12-31",
                                name="NOLA_calendar",
-                               weekdays=c("saturday","sunday"),)
+                               weekdays=c("saturday","sunday"))
 
 
 r_period<-as.yearqtr(as.Date(Sys.Date())-1)
